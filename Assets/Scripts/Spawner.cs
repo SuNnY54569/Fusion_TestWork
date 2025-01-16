@@ -7,10 +7,9 @@ using UnityEngine.SceneManagement;
 
 public class Spawner : MonoBehaviour, INetworkRunnerCallbacks
 {
-    private NetworkRunner networkRunner;
-
     [SerializeField] private NetworkPrefabRef networkPrefabRef;
-
+    
+    private NetworkRunner networkRunner;
     private Dictionary<PlayerRef, NetworkObject> spawnCharacter = new Dictionary<PlayerRef, NetworkObject>();
 
     //Host
@@ -69,9 +68,7 @@ public class Spawner : MonoBehaviour, INetworkRunnerCallbacks
         if (networkRunner.IsServer)
         {
             Vector3 playerPos = new Vector3((player.RawEncoded % runner.Config.Simulation.PlayerCount * 3), 1f, 0f);
-
             NetworkObject networkObject = runner.Spawn(networkPrefabRef,playerPos,Quaternion.identity,player);
-            
             spawnCharacter.Add(player,networkObject);
         }
     }
@@ -122,7 +119,29 @@ public class Spawner : MonoBehaviour, INetworkRunnerCallbacks
 
     public void OnInput(NetworkRunner runner, NetworkInput input)
     {
+        var data = new NetworkInputData();
+
+        if (Input.GetKey(KeyCode.W))
+        {
+            data.direction += Vector3.forward;
+        }
         
+        if (Input.GetKey(KeyCode.S))
+        {
+            data.direction += Vector3.back;
+        }
+        
+        if (Input.GetKey(KeyCode.A))
+        {
+            data.direction += Vector3.left;
+        }
+
+        if (Input.GetKey(KeyCode.D))
+        {
+            data.direction += Vector3.right;
+        }
+
+        input.Set(data); //Passing to host
     }
 
     public void OnInputMissing(NetworkRunner runner, PlayerRef player, NetworkInput input)
