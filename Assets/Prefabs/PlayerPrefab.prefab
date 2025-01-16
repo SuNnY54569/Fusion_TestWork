@@ -212,6 +212,8 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 0be74134bb2a67d4ebd0992a81bd391e, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
+  modelParts:
+  - {fileID: 795581648327709336}
   kcc: {fileID: 8716403391962267386}
   camTarget: {fileID: 8876844538556172074}
   lookSensitivity: 0.15

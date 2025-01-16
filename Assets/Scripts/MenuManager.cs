@@ -62,8 +62,7 @@ public class MenuManager : MonoBehaviour
         {
             runnerInstance = Instantiate(networkRunnerPrefab);
         }
-
-        // Let the Fusion Runner know that we will be providing user input
+        
         runnerInstance.ProvideInput = true;
 
         var startGameArgs = new StartGameArgs()
@@ -74,11 +73,19 @@ public class MenuManager : MonoBehaviour
 
         // GameMode.Host = Start a session with a specific name
         // GameMode.Client = Join a session with a specific name
-        await runnerInstance.StartGame(startGameArgs);
+        var result = await runnerInstance.StartGame(startGameArgs);
 
-        if (runnerInstance.IsServer)
+        if (result.Ok)
         {
-            runnerInstance.LoadScene(sceneName);
+            if (runnerInstance.IsServer)
+            {
+                runnerInstance.LoadScene(sceneName);
+            }
+            statusText.text = mode == GameMode.Client ? "Joined Room!" : "Room Created!";
+        }
+        else
+        {
+            statusText.text = $"Failed to start: {result.ShutdownReason}";
         }
         
         createRoomButton.interactable = true;

@@ -29,6 +29,8 @@ public class CameraFollow : MonoBehaviour
      private static CameraFollow _singleton;
 
      private Transform target;
+     
+     [SerializeField] private float smoothSpeed = 0.125f;
 
      private void Awake()
      {
@@ -47,7 +49,11 @@ public class CameraFollow : MonoBehaviour
      {
           if (target != null)
           {
-               transform.SetPositionAndRotation(target.position, target.rotation);
+               Vector3 smoothedPosition = Vector3.Lerp(transform.position, target.position, smoothSpeed);
+               transform.position = smoothedPosition;
+
+               Quaternion smoothedRotation = Quaternion.Slerp(transform.rotation, target.rotation, smoothSpeed);
+               transform.rotation = smoothedRotation;
           }
      }
 
