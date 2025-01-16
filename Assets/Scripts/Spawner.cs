@@ -11,6 +11,7 @@ public class Spawner : MonoBehaviour, INetworkRunnerCallbacks
     
     private NetworkRunner networkRunner;
     private Dictionary<PlayerRef, NetworkObject> spawnCharacter = new Dictionary<PlayerRef, NetworkObject>();
+    private bool _mouseButton0;
 
     //Host
     async void GameStart(GameMode mode)
@@ -52,7 +53,12 @@ public class Spawner : MonoBehaviour, INetworkRunnerCallbacks
             }
         }
     }
-    
+
+    private void Update()
+    {
+        _mouseButton0 = _mouseButton0 | Input.GetMouseButtonDown(0);
+    }
+
     public void OnObjectExitAOI(NetworkRunner runner, NetworkObject obj, PlayerRef player)
     {
         
@@ -120,28 +126,17 @@ public class Spawner : MonoBehaviour, INetworkRunnerCallbacks
     public void OnInput(NetworkRunner runner, NetworkInput input)
     {
         var data = new NetworkInputData();
-
-        if (Input.GetKey(KeyCode.W))
-        {
-            data.direction += Vector3.forward;
-        }
         
-        if (Input.GetKey(KeyCode.S))
-        {
-            data.direction += Vector3.back;
-        }
+        float horizontal = Input.GetAxis("Horizontal");
+        float vertical = Input.GetAxis("Vertical");
         
-        if (Input.GetKey(KeyCode.A))
-        {
-            data.direction += Vector3.left;
-        }
+        data.direction = new Vector3(horizontal, 0, vertical);
+        //data.rotationInput = Input.GetAxis("Mouse X");
+        
+        data.buttons.Set(NetworkInputData.MouseButton0,_mouseButton0);
+        _mouseButton0 = false;
 
-        if (Input.GetKey(KeyCode.D))
-        {
-            data.direction += Vector3.right;
-        }
-
-        input.Set(data); //Passing to host
+        input.Set(data); //Pass to host
     }
 
     public void OnInputMissing(NetworkRunner runner, PlayerRef player, NetworkInput input)
