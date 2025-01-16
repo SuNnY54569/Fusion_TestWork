@@ -12,6 +12,7 @@ public class Player : NetworkBehaviour
     [SerializeField] private float lookSensitivity = 0.15f;
     [SerializeField] private float speed = 5f;
     [SerializeField] private float jumpImpulse = 10f;
+    public LayerMask collisionTestMask;
 
     public int Score;
     public bool IsReady;
@@ -21,7 +22,7 @@ public class Player : NetworkBehaviour
 
     private InputManager inputManager;
     private Vector2 baseLookRotation;
-    private Vector2 baseSpeed;
+    Collider[] collisionTestColliders = new Collider[8];
     public override void Spawned()
     {
         kcc.SetGravity(Physics.gravity.y * 2f);
@@ -60,6 +61,31 @@ public class Player : NetworkBehaviour
             PreviousButtons = input.Buttons;
             baseLookRotation = kcc.GetLookRotation();
         }
+        
+        int collectablesInRange = Runner.GetPhysicsScene().OverlapCapsule(transform.position,
+            transform.position + Vector3.up * 2, 1f, collisionTestColliders, collisionTestMask, QueryTriggerInteraction.Collide);
+        for (int i = 0; i < collectablesInRange; i++)
+        {
+            var pickUpObject = collisionTestColliders[i].GetComponent<Coin>();
+            if (pickUpObject != null)
+            {
+                CollectObject(pickUpObject);
+                Debug.Log("Collect Object");
+            }
+        }
+    }
+    
+    private bool CollectObject(Coin pickUp)
+    {
+        if (pickUp == null || pickUp.Object?.IsValid != true)
+            return false;
+
+        if (pickUp.CanPickUp)
+        {
+            pickUp.OnPickUpLocal(this);
+        }
+
+        return true;
     }
 
     public override void Render()
@@ -98,5 +124,11 @@ public class Player : NetworkBehaviour
     private void RPC_PlayerName(string name)
     {
         Name = name;
+    }
+
+    [Rpc(RpcSources.All, RpcTargets.StateAuthority, Channel = RpcChannel.Reliable)]
+    public void RPC_Reward(int scoreValue)
+    {
+        Score += scoreValue;
     }
 }

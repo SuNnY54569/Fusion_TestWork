@@ -823,6 +823,7 @@ MonoBehaviour:
   m_EditorClassIdentifier: 
   gameStateText: {fileID: 444208502}
   instructionText: {fileID: 169291351}
+  leaderboardItems: []
 --- !u!114 &1490252539
 MonoBehaviour:
   m_ObjectHideFlags: 0
