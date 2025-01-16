@@ -18,6 +18,7 @@ public class GameManager : NetworkBehaviour, IPlayerJoined, IPlayerLeft
     [SerializeField] private NetworkPrefabRef playerPrefab;
     [SerializeField] private Transform spawnpoint;
     [SerializeField] private Transform spawnpointPivot;
+    [SerializeField] private CoinSpawner coinSpawner;
     
     [Networked] private Player Winner { get; set; }
     [Networked, OnChangedRender(nameof(GameStateChanged))] private GameState State { get; set; }
@@ -55,6 +56,7 @@ public class GameManager : NetworkBehaviour, IPlayerJoined, IPlayerLeft
                 Winner = null;
                 State = GameState.Playing;
                 PreparePlayers();
+                coinSpawner.StartSpawning();
             }
         }
 

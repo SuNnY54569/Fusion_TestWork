@@ -122,6 +122,75 @@ NavMeshSettings:
     debug:
       m_Flags: 0
   m_NavMeshData: {fileID: 0}
+--- !u!1 &62794796
+GameObject:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  serializedVersion: 6
+  m_Component:
+  - component: {fileID: 62794799}
+  - component: {fileID: 62794798}
+  - component: {fileID: 62794797}
+  m_Layer: 0
+  m_Name: Coin Spawner
+  m_TagString: Untagged
+  m_Icon: {fileID: 0}
+  m_NavMeshLayer: 0
+  m_StaticEditorFlags: 0
+  m_IsActive: 1
+--- !u!114 &62794797
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 62794796}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: -1552182283, guid: e725a070cec140c4caffb81624c8c787, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
+  SortKey: 2529692394
+  ObjectInterest: 1
+  Flags: 262145
+  NestedObjects: []
+  NetworkedBehaviours:
+  - {fileID: 62794798}
+  ForceRemoteRenderTimeframe: 0
+--- !u!114 &62794798
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 62794796}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 7a41e0f43c32cc84ab2073aeadf70344, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
+  coinPrefab:
+    RawGuidValue: 75eb90821414c724791bfca9c6c371a0
+  spawnInterval: 5
+  spawnAreaMin: {x: 0, y: 1, z: 0}
+  spawnAreaMax: {x: 30, y: 1, z: 30}
+--- !u!4 &62794799
+Transform:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 62794796}
+  serializedVersion: 2
+  m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
+  m_LocalPosition: {x: 0, y: 0, z: 0}
+  m_LocalScale: {x: 1, y: 1, z: 1}
+  m_ConstrainProportionsScale: 0
+  m_Children: []
+  m_Father: {fileID: 0}
+  m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
 --- !u!1 &169291349
 GameObject:
   m_ObjectHideFlags: 0
@@ -707,6 +776,7 @@ MonoBehaviour:
     RawGuidValue: 51a4d97ff58b5cf4fa3d0dda7d73b423
   spawnpoint: {fileID: 653500163}
   spawnpointPivot: {fileID: 1071333051}
+  coinSpawner: {fileID: 62794798}
 --- !u!114 &612773789
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -1025,3 +1095,4 @@ SceneRoots:
   - {fileID: 1071333051}
   - {fileID: 1490252542}
   - {fileID: 519566770}
+  - {fileID: 62794799}
