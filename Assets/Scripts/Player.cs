@@ -20,6 +20,8 @@ public class Player : NetworkBehaviour
     [SerializeField] private int bulletScoreCost = 10;
     [SerializeField] private int bulletDamage = 30;
     [SerializeField] private float bulletSpeed = 10f;
+    [SerializeField] private float shootCooldown = 30f;
+    private int lastShotTick;
     
 
     [Networked] public int Score { get; set; }
@@ -62,14 +64,22 @@ public class Player : NetworkBehaviour
             Vector3 worldDirection = kcc.TransformRotation * new Vector3(input.Direction.x, 0f, input.Direction.y);
             float jump = 0f;
 
-            if (input.Buttons.WasPressed(PreviousButtons, InputButton.Jump) && kcc .IsGrounded)
+            if (input.Buttons.WasPressed(PreviousButtons, InputButton.Jump) && kcc.IsGrounded)
             {
                 jump = jumpImpulse;
             }
             
             if (input.Buttons.WasPressed(PreviousButtons, InputButton.Fire) && HasInputAuthority)
             {
-                RPC_Shoot();
+                if (Runner.Tick - lastShotTick >= shootCooldown)
+                {
+                    RPC_Shoot();
+                    lastShotTick = Runner.Tick;
+                }
+                else
+                {
+                    Debug.Log("Shooting is on cooldown!");
+                }
             }
             
             kcc.Move(worldDirection.normalized * speed, jump);
@@ -135,6 +145,8 @@ public class Player : NetworkBehaviour
     [Rpc(RpcSources.InputAuthority, RpcTargets.InputAuthority | RpcTargets.StateAuthority)]
     public void RPC_SetReady()
     {
+        if (!GameManager.Instance.reachMinimumPlayer) { return; }
+        
         IsReady = true;
         if (HasInputAuthority)
         {

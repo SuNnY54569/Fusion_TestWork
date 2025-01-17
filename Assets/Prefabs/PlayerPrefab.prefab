@@ -229,6 +229,7 @@ MonoBehaviour:
   bulletScoreCost: 5
   bulletDamage: 35
   bulletSpeed: 10
+  shootCooldown: 30
   _Score: 0
   IsReady: 0
   _Name: 

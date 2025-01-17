@@ -72,6 +72,12 @@ public class UIManager : MonoBehaviour
         }
     }
 
+    public void NotEnoughPlayer(int minPlayersRequired)
+    {
+        gameStateText.text = "Waiting for more players";
+        instructionText.text = $"at least {minPlayersRequired} players to start the game.";
+    }
+
     public void DidSetReady()
     {
         instructionText.text = "Waiting for other players to be ready";

@@ -30,11 +30,15 @@ public class GameManager : NetworkBehaviour, IPlayerJoined, IPlayerLeft
     [SerializeField] [Range(0f, 1f)] private float minLostCoinRatio = 0.3f;
     [SerializeField] [Range(0f, 1f)] private float maxLostCoinRatio = 0.5f;
     
+    public int minimumPlayers = 2;
+    
     [Networked] private Player Winner { get; set; }
     [Networked] public float Timer { get; set; }
     [Networked] private float CountdownTimer { get; set; } 
     [Networked, OnChangedRender(nameof(GameStateChanged))] public GameState State { get; set; }
     [Networked] private NetworkDictionary<PlayerRef, Player> Players => default;
+
+    public bool reachMinimumPlayer = false;
 
     public override void Spawned()
     {
@@ -96,6 +100,15 @@ public class GameManager : NetworkBehaviour, IPlayerJoined, IPlayerLeft
     
     private void HandleWaitingState()
     {
+        if (Players.Count < minimumPlayers)
+        {
+            // Do not proceed with game start, keep waiting
+            UIManager.Instance.NotEnoughPlayer(minimumPlayers);
+            reachMinimumPlayer = false;
+            return;
+        }
+
+        reachMinimumPlayer = true;
         // Check if all players are ready
         bool areAllReady = Players.All(p => p.Value.IsReady);
 
