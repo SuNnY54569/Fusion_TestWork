@@ -38,6 +38,6 @@ public class Coin : NetworkBehaviour
         {
             coinSpawner.OnCoinCollected();
         }
-        Runner.Despawn(this.Object);
+        Runner.Despawn(Object);
     }
 }

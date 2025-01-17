@@ -14,7 +14,7 @@ public class Player : NetworkBehaviour
     [SerializeField] private float jumpImpulse = 10f;
     public LayerMask collisionTestMask;
 
-    [Networked] public int Score { get; private set; }
+    [Networked] public int Score { get; set; }
     public bool IsReady;
     
     [Networked] public string Name { get; private set; }
@@ -40,6 +40,7 @@ public class Player : NetworkBehaviour
             RPC_PlayerName(Name);
             CameraFollow.Singleton.SetTarget(camTarget);
             kcc.Settings.ForcePredictedLookRotation = true;
+            UIManager.Singleton.GetLocalPlayer(this);
         }
     }
 
@@ -97,6 +98,11 @@ public class Player : NetworkBehaviour
         }
         
         UpdateCamTarget();
+        if (HasInputAuthority)
+        {
+            // Call your UI update here
+            UIManager.Singleton.UpdatePlayerScore(Score);
+        }
     }
 
     private void UpdateCamTarget()
@@ -130,6 +136,6 @@ public class Player : NetworkBehaviour
     public void RPC_Reward(int scoreValue)
     {
         Score += scoreValue;
-        UIManager.Singleton.UpdatePlayerScore(Score);
+        Debug.Log($"RPC Score Updated: {Score}");
     }
 }

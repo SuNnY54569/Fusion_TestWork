@@ -29,22 +29,18 @@ public class UIManager : MonoBehaviour
 
     private static UIManager _singleton;
 
+    [SerializeField] private GameObject leaderBoard;
     [SerializeField] private TMP_Text gameStateText;
     [SerializeField] private TMP_Text instructionText;
     [SerializeField] private LeaderboardItem[] leaderboardItems;
     [SerializeField] private TMP_Text playerScoreText;
+    [SerializeField] private TMP_Text timerText;
     
     private Player localPlayer;
     
     private void Awake()
     {
         Singleton = this;
-        
-        localPlayer = FindLocalPlayer(); 
-        if (localPlayer != null)
-        {
-            playerScoreText.text = $"Your Score: {localPlayer.Score}"; // Set the local player score initially
-        }
     }
 
     private void OnDestroy()
@@ -54,12 +50,21 @@ public class UIManager : MonoBehaviour
             Singleton = null;
         }
     }
+
+    public void GetLocalPlayer(Player player)
+    {
+        localPlayer = player;
+    }
     
     public void UpdatePlayerScore(int newScore)
     {
         if (playerScoreText != null)
         {
-            playerScoreText.text = $"Your Score: {newScore}"; // Update the score text with the new value
+            playerScoreText.text = $"Your Score: {newScore}";
+        }
+        else
+        {
+            Debug.LogError("playerScoreText is null!");
         }
     }
 
@@ -68,7 +73,7 @@ public class UIManager : MonoBehaviour
         instructionText.text = "Waiting for other players to be ready";
     }
 
-    public void SetWaitUI(GameState newState, Player winner)
+    public void SetUI(GameState newState, Player winner)
     {
         if (newState == GameState.Waiting)
         {
@@ -82,8 +87,12 @@ public class UIManager : MonoBehaviour
                 gameStateText.text = $"{winner.Name} Wins";
                 instructionText.text = "Press R when you're Ready to play again";
             }
+            
         }
-
+        
+        leaderBoard.SetActive(newState == GameState.Playing);
+        playerScoreText.enabled = newState == GameState.Playing;
+        timerText.enabled = newState == GameState.Playing;
         gameStateText.enabled = newState == GameState.Waiting;
         instructionText.enabled = newState == GameState.Waiting;
     }
@@ -100,13 +109,14 @@ public class UIManager : MonoBehaviour
                 
                 if (players[i].Value == localPlayer)
                 {
+                    leaderboardItems[i].nameText.color = Color.yellow;
                     leaderboardItems[i].scoreText.color = Color.yellow; // Highlight local player's score
                 }
                 else
                 {
+                    leaderboardItems[i].nameText.color = Color.white;
                     leaderboardItems[i].scoreText.color = Color.white;
                 }
-                Debug.Log($"Comparing: {players[i].Value.Name} == {localPlayer.Name}");
             }
             else
             {
@@ -117,10 +127,11 @@ public class UIManager : MonoBehaviour
         }
     }
     
-    private Player FindLocalPlayer()
+    public void UpdateTimer(float timeLeft)
     {
-        // Implement the logic to find the local player (based on your setup)
-        return FindObjectOfType<Player>(); // This is a placeholder
+        // Display the timer in MM:SS format
+        string formattedTime = $"{Mathf.FloorToInt(timeLeft / 60):00}:{Mathf.FloorToInt(timeLeft % 60):00}";
+        timerText.text = formattedTime; // Assuming you have a Text or TMP_Text called timerText
     }
     
     [Serializable]

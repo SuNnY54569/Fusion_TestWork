@@ -19,18 +19,22 @@ public class GameManager : NetworkBehaviour, IPlayerJoined, IPlayerLeft
     [SerializeField] private Transform spawnpoint;
     [SerializeField] private Transform spawnpointPivot;
     [SerializeField] private CoinSpawner coinSpawner;
+    [SerializeField] private float gameDuration;
     
     [Networked] private Player Winner { get; set; }
+    
+    [Networked] public float Timer { get; set; }
     [Networked, OnChangedRender(nameof(GameStateChanged))] private GameState State { get; set; }
     [Networked] private NetworkDictionary<PlayerRef, Player> Players => default;
 
     public override void Spawned()
     {
+        Timer = gameDuration;
         Winner = null;
         State = GameState.Waiting;
         if (UIManager.Singleton != null)
         {
-            UIManager.Singleton.SetWaitUI(State, Winner);
+            UIManager.Singleton.SetUI(State, Winner);
         }
         Runner.SetIsSimulated(Object, true);
     }
@@ -57,18 +61,54 @@ public class GameManager : NetworkBehaviour, IPlayerJoined, IPlayerLeft
                 State = GameState.Playing;
                 PreparePlayers();
                 coinSpawner.StartSpawning();
+                foreach (var player in Players)
+                {
+                    player.Value.Score = 0;// Reset score
+                    player.Value.IsReady = false; // Unready the player
+                }
+            }
+        }
+        
+        if (State == GameState.Playing && Runner.IsServer)
+        {
+            Timer -= Runner.DeltaTime; // Countdown
+            if (Timer <= 0)
+            {
+                EndGame();
             }
         }
 
         if (State == GameState.Playing && !Runner.IsResimulation)
         {
+            UIManager.Singleton.UpdateTimer(Timer);
             UIManager.Singleton.UpdateLeaderBoard(Players.OrderByDescending(p => p.Value.Score).ToArray());
         }
+    }
+    
+    private void EndGame()
+    {
+        // Determine the player with the highest score
+        Winner = Players.Select(kvp => kvp.Value).OrderByDescending(p => p.Score).FirstOrDefault();
+    
+        // Set the game state back to waiting
+        State = GameState.Waiting;
+    
+        // Stop spawning coins
+        coinSpawner.StopSpawning();
+        coinSpawner.RemoveAllCoins();
+    
+        // Update UI
+        GameStateChanged();
+
+        // Unready all players to prepare for the next round
+        UnreadyAll();
+        
+        Timer = gameDuration;
     }
 
     private void GameStateChanged()
     {
-        UIManager.Singleton.SetWaitUI(State, Winner);
+        UIManager.Singleton.SetUI(State, Winner);
     }
 
     private void PreparePlayers()

@@ -14,6 +14,7 @@ public class CoinSpawner : NetworkBehaviour
     
     private bool isSpawning = false;
     private Coroutine spawnCoroutine;
+    private List<NetworkObject> spawnedCoins = new List<NetworkObject>();
 
     public void StartSpawning()
     {
@@ -55,6 +56,8 @@ public class CoinSpawner : NetworkBehaviour
 
         Vector3 randomPosition = GetRandomPositionInArea();
         NetworkObject spawnedCoin = Runner.Spawn(coinPrefab, randomPosition, Quaternion.identity);
+        
+        spawnedCoins.Add(spawnedCoin);
 
         // Ensure the coin has a NetworkTransform to synchronize its position
         if (!spawnedCoin.TryGetComponent(out NetworkTransform _))
@@ -89,5 +92,21 @@ public class CoinSpawner : NetworkBehaviour
     public void OnCoinCollected()
     {
         currentCoinCount--;
+    }
+    
+    public void RemoveAllCoins()
+    {
+        if (!Runner.IsServer) return; // Only the server removes coins
+
+        foreach (var coin in spawnedCoins)
+        {
+            if (coin != null && coin.IsValid)
+            {
+                Runner.Despawn(coin);
+            }
+        }
+
+        spawnedCoins.Clear();
+        currentCoinCount = 0;
     }
 }
