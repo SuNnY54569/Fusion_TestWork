@@ -277,23 +277,4 @@ public class Player : NetworkBehaviour
             Debug.Log($"{Name} has been eliminated!");
         }
     }
-
-    private void OnDrawGizmos()
-    {
-        // Draw the ray from the camera to where it hits (or max distance if no hit)
-        Ray ray = new Ray(camTarget.transform.position, camTarget.transform.forward);
-        RaycastHit hit;
-        Physics.Raycast(ray, out hit, 1000);
-
-        // Gizmo to visualize the camera ray
-        Gizmos.color = Color.red;
-        Gizmos.DrawLine(camTarget.transform.position, hit.point); // Ray from camera to hit point or max distance
-
-        // If the bullet spawn point is available, visualize its forward direction
-        if (bulletSpawnPoint != null)
-        {
-            Gizmos.color = Color.green;
-            Gizmos.DrawLine(bulletSpawnPoint.position, bulletSpawnPoint.position + bulletSpawnPoint.forward * 10); // Forward direction of bullet spawn
-        }
-    }
 }
