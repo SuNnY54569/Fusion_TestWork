@@ -12,7 +12,15 @@ public class Player : NetworkBehaviour
     [SerializeField] private float lookSensitivity = 0.15f;
     [SerializeField] private float speed = 5f;
     [SerializeField] private float jumpImpulse = 10f;
-    public LayerMask collisionTestMask;
+    [SerializeField] private LayerMask collisionTestMask;
+    [SerializeField] private int maxHealth;
+    [Networked] public int Health { get; private set; } = 100;
+    [SerializeField] private GameObject bulletPrefab;
+    [SerializeField] private Transform bulletSpawnPoint;
+    [SerializeField] private int bulletScoreCost = 10;
+    [SerializeField] private int bulletDamage = 30;
+    [SerializeField] private float bulletSpeed = 10f;
+    
 
     [Networked] public int Score { get; set; }
     public bool IsReady;
@@ -40,7 +48,8 @@ public class Player : NetworkBehaviour
             RPC_PlayerName(Name);
             CameraFollow.Singleton.SetTarget(camTarget);
             kcc.Settings.ForcePredictedLookRotation = true;
-            UIManager.Singleton.GetLocalPlayer(this);
+            UIManager.Instance.GetLocalPlayer(this);
+            Health = maxHealth;
         }
     }
 
@@ -58,20 +67,32 @@ public class Player : NetworkBehaviour
                 jump = jumpImpulse;
             }
             
+            if (input.Buttons.WasPressed(PreviousButtons, InputButton.Fire) && HasInputAuthority)
+            {
+                RPC_Shoot();
+            }
+            
             kcc.Move(worldDirection.normalized * speed, jump);
             PreviousButtons = input.Buttons;
             baseLookRotation = kcc.GetLookRotation();
         }
         
-        int collectablesInRange = Runner.GetPhysicsScene().OverlapCapsule(transform.position,
+        int objectInRange = Runner.GetPhysicsScene().OverlapCapsule(transform.position,
             transform.position + Vector3.up * 2, 1f, collisionTestColliders, collisionTestMask, QueryTriggerInteraction.Collide);
-        for (int i = 0; i < collectablesInRange; i++)
+        for (int i = 0; i < objectInRange; i++)
         {
             var pickUpObject = collisionTestColliders[i].GetComponent<Coin>();
             if (pickUpObject != null)
             {
                 CollectObject(pickUpObject);
                 Debug.Log("Collect Object");
+            }
+
+            var bulletObject = collisionTestColliders[i].GetComponent<Bullet>();
+            if (bulletObject != null && Object.InputAuthority != bulletObject.shooter)
+            {
+                RPC_TakeDamage(bulletDamage);
+                bulletObject.DestroyBullet();
             }
         }
     }
@@ -101,7 +122,8 @@ public class Player : NetworkBehaviour
         if (HasInputAuthority)
         {
             // Call your UI update here
-            UIManager.Singleton.UpdatePlayerScore(Score);
+            UIManager.Instance.UpdatePlayerScore(Score);
+            UIManager.Instance.UpdatePlayerHealth(Health);
         }
     }
 
@@ -116,7 +138,7 @@ public class Player : NetworkBehaviour
         IsReady = true;
         if (HasInputAuthority)
         {
-            UIManager.Singleton.DidSetReady();
+            UIManager.Instance.DidSetReady();
         }
     }
 
@@ -137,5 +159,40 @@ public class Player : NetworkBehaviour
     {
         Score += scoreValue;
         Debug.Log($"RPC Score Updated: {Score}");
+    }
+    
+    [Rpc(RpcSources.InputAuthority, RpcTargets.StateAuthority)]
+    private void RPC_Shoot()
+    {
+        if (!Object.HasStateAuthority)
+            return;
+        
+        if (Score < bulletScoreCost)
+        {
+            Debug.Log("Not enough score to shoot!");
+            return;
+        }
+
+        // Deduct score for shooting
+        Score -= bulletScoreCost;
+
+        // Spawn bullet
+        NetworkObject bullet = Runner.Spawn(bulletPrefab, bulletSpawnPoint.position, bulletSpawnPoint.rotation);
+        bullet.GetComponent<Bullet>().Initialize(Object.InputAuthority, bulletDamage, bulletSpeed);
+
+        Debug.Log($"Player {Name} shot a bullet!");
+    }
+    
+    [Rpc(RpcSources.StateAuthority, RpcTargets.StateAuthority)]
+    public void RPC_TakeDamage(int damage)
+    {
+        Health -= damage;
+
+        if (Health <= 0)
+        {
+            GameManager.Instance.HandlePlayerDeath(this);
+            Health = maxHealth;
+            Debug.Log($"{Name} has been eliminated!");
+        }
     }
 }

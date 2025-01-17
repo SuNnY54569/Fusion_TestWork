@@ -6,11 +6,13 @@ using UnityEngine;
 public class CoinSpawner : NetworkBehaviour
 {
     [SerializeField] private NetworkPrefabRef coinPrefab;
+    [SerializeField] private NetworkPrefabRef dropCoinPrefab;
     [SerializeField] private float spawnInterval = 5f;
     [SerializeField] private Vector3 spawnAreaMin;
     [SerializeField] private Vector3 spawnAreaMax;
     [SerializeField] private int maxCoinsOnMap = 10;
     [SerializeField] private int currentCoinCount = 0;
+    [SerializeField] private int coinValue = 10;
     
     private bool isSpawning = false;
     private Coroutine spawnCoroutine;
@@ -32,7 +34,7 @@ public class CoinSpawner : NetworkBehaviour
         // Spawn coins to fill the map up to maxCoinsOnMap
         while (currentCoinCount < maxCoinsOnMap)
         {
-            SpawnCoin();
+            SpawnCoin(GetRandomPositionInArea(), coinValue);
         }
     }
 
@@ -45,19 +47,34 @@ public class CoinSpawner : NetworkBehaviour
             // Only spawn if there are fewer than the max allowed coins
             if (currentCoinCount < maxCoinsOnMap)
             {
-                SpawnCoin();
+                SpawnCoin(GetRandomPositionInArea(), coinValue);
             }
         }
     }
 
-    private void SpawnCoin()
+    public void SpawnCoin(Vector3 position, int value, bool countCoin = true)
     {
         if (!Runner.IsServer) return; // Only the server spawns coins
 
-        Vector3 randomPosition = GetRandomPositionInArea();
-        NetworkObject spawnedCoin = Runner.Spawn(coinPrefab, randomPosition, Quaternion.identity);
+        NetworkObject spawnedCoin;
+
+        if (countCoin)
+        {
+            spawnedCoin = Runner.Spawn(coinPrefab, position, Quaternion.identity);
+        }
+        else
+        {
+            spawnedCoin = Runner.Spawn(dropCoinPrefab, position, Quaternion.identity);
+        }
         
-        spawnedCoins.Add(spawnedCoin);
+        if (spawnedCoin.TryGetComponent<Coin>(out Coin coinComponent))
+        {
+            coinComponent.SetCoinValue(value);
+        }
+        else
+        {
+            Debug.LogWarning("The spawned coin does not have a Coin component!");
+        }
 
         // Ensure the coin has a NetworkTransform to synchronize its position
         if (!spawnedCoin.TryGetComponent(out NetworkTransform _))
@@ -65,7 +82,12 @@ public class CoinSpawner : NetworkBehaviour
             spawnedCoin.gameObject.AddComponent<NetworkTransform>();
         }
         
-        currentCoinCount++;
+        spawnedCoins.Add(spawnedCoin);
+
+        if (countCoin)
+        {
+            currentCoinCount++;
+        }
     }
 
     private Vector3 GetRandomPositionInArea()
@@ -98,15 +120,16 @@ public class CoinSpawner : NetworkBehaviour
     {
         if (!Runner.IsServer) return; // Only the server removes coins
 
-        foreach (var coin in spawnedCoins)
+        for (int i = spawnedCoins.Count - 1; i >= 0; i--)
         {
+            NetworkObject coin = spawnedCoins[i];
             if (coin != null && coin.IsValid)
             {
                 Runner.Despawn(coin);
             }
+            spawnedCoins.RemoveAt(i);
         }
-
-        spawnedCoins.Clear();
+        
         currentCoinCount = 0;
     }
 }

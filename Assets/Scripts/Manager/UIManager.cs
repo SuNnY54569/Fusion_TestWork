@@ -3,30 +3,10 @@ using System.Collections;
 using System.Collections.Generic;
 using TMPro;
 using UnityEngine;
-using UnityEngine.UI;
 
 public class UIManager : MonoBehaviour
 {
-    public static UIManager Singleton
-    {
-        get => _singleton;
-        set
-        {
-            if (value == null)
-            {
-                _singleton = null;
-            }
-            else if(_singleton == null)
-            {
-                _singleton = value;
-            }
-            else if (_singleton != value)
-            {
-                Destroy(value);
-                Debug.LogError($"There should only ever be one instance of {nameof(UIManager)}!");
-            }
-        }
-    }
+    public static UIManager Instance;
 
     private static UIManager _singleton;
 
@@ -36,22 +16,30 @@ public class UIManager : MonoBehaviour
     [SerializeField] private TMP_Text playerScoreText;
     [SerializeField] private TMP_Text timerText;
     [SerializeField] private TMP_Text countdownText;
+    [SerializeField] private TMP_Text playerHealthText;
     [SerializeField] private GameManager gameManager;
-    [SerializeField] private Button menuButton;
+    [SerializeField] private GameObject menuButton;
     [SerializeField] private LeaderboardItem[] leaderboardItems;
     
     private Player localPlayer;
     
     private void Awake()
     {
-        Singleton = this;
+        if (Instance == null)
+        {
+            Instance = this;
+        }
+        else
+        {
+            Destroy(gameObject);
+        }
     }
 
     private void OnDestroy()
     {
-        if (Singleton == this)
+        if (Instance == this)
         {
-            Singleton = null;
+            Instance = null;
         }
     }
 
@@ -64,11 +52,23 @@ public class UIManager : MonoBehaviour
     {
         if (playerScoreText != null)
         {
-            playerScoreText.text = $"Your Score: {newScore}";
+            playerScoreText.text = $"Score: {newScore}";
         }
         else
         {
             Debug.LogError("playerScoreText is null!");
+        }
+    }
+    
+    public void UpdatePlayerHealth(int health)
+    {
+        if (playerHealthText != null)
+        {
+            playerHealthText.text = $"Health: {health}";
+        }
+        else
+        {
+            Debug.LogError("playerHealthText is null!");
         }
     }
 
@@ -94,7 +94,7 @@ public class UIManager : MonoBehaviour
             
         }
 
-        menuButton.enabled = newState == GameState.Waiting;
+        menuButton.SetActive(newState == GameState.Waiting);
         leaderBoard.SetActive(newState == GameState.Playing);
         playerScoreText.enabled = newState == GameState.Playing;
         timerText.enabled = newState == GameState.Playing;

@@ -6,6 +6,7 @@ using UnityEngine;
 public enum InputButton
 {
     Jump,
+    Fire,
 }
 
 public struct NetInput : INetworkInput

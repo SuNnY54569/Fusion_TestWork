@@ -5,8 +5,10 @@ using UnityEngine;
 
 public class Coin : NetworkBehaviour
 {
-    [SerializeField] private int scoreValue = 1;
+    [SerializeField] private int scoreValue = 10;
     [SerializeField] private float rotationSpeed = 360f;
+    [SerializeField] private GameObject coinModel;
+    [SerializeField] private Material dropCoinMat;
 
     [Networked] public NetworkBool Collected { get; set; } = false;
 
@@ -39,5 +41,15 @@ public class Coin : NetworkBehaviour
             coinSpawner.OnCoinCollected();
         }
         Runner.Despawn(Object);
+    }
+
+    public void SetCoinValue(int value)
+    {
+        scoreValue = value;
+    }
+
+    public void ChangeCoinColor()
+    {
+        
     }
 }

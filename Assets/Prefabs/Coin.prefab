@@ -69,8 +69,9 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: fed73ace3cb26fd45984bd4ada042c9b, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
-  scoreValue: 1
+  scoreValue: 10
   rotationSpeed: 360
+  coinModel: {fileID: 6245052926762222355}
   _Collected:
     _value: 0
 --- !u!114 &3149927650859440280

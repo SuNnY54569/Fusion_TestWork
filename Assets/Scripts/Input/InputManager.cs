@@ -52,6 +52,11 @@ public class InputManager : SimulationBehaviour, IBeforeUpdate, INetworkRunnerCa
             Vector2 mouseDelta = mouse.delta.ReadValue();
             Vector2 lookRotationDelta = new(-mouseDelta.y, mouseDelta.x);
             mouseDeltaAccumulator.Accumulate(lookRotationDelta);
+
+            if (mouse.leftButton.wasPressedThisFrame && LocalPlayer != null)
+            {
+                buttons.Set(InputButton.Fire, mouse.leftButton.isPressed);
+            }
         }
 
         if (keyboard != null)

@@ -18,6 +18,8 @@ public enum GameState
 
 public class GameManager : NetworkBehaviour, IPlayerJoined, IPlayerLeft
 {
+    public static GameManager Instance;
+    
     [SerializeField] private NetworkPrefabRef playerPrefab;
     [SerializeField] private Transform spawnpoint;
     [SerializeField] private Transform spawnpointPivot;
@@ -25,11 +27,13 @@ public class GameManager : NetworkBehaviour, IPlayerJoined, IPlayerLeft
     [SerializeField] private float gameDuration;
     [SerializeField] private float countdownDuration = 3f;
     [SerializeField] private string menuSceneName = "Menu";
+    [SerializeField] [Range(0f, 1f)] private float minLostCoinRatio = 0.3f;
+    [SerializeField] [Range(0f, 1f)] private float maxLostCoinRatio = 0.5f;
     
     [Networked] private Player Winner { get; set; }
     [Networked] public float Timer { get; set; }
     [Networked] private float CountdownTimer { get; set; } 
-    [Networked, OnChangedRender(nameof(GameStateChanged))] private GameState State { get; set; }
+    [Networked, OnChangedRender(nameof(GameStateChanged))] public GameState State { get; set; }
     [Networked] private NetworkDictionary<PlayerRef, Player> Players => default;
 
     public override void Spawned()
@@ -38,8 +42,20 @@ public class GameManager : NetworkBehaviour, IPlayerJoined, IPlayerLeft
         CountdownTimer = countdownDuration;
         Winner = null;
         State = GameState.Waiting;
-        UIManager.Singleton?.SetUI(State, Winner);
+        UIManager.Instance?.SetUI(State, Winner);
         Runner.SetIsSimulated(Object, true);
+    }
+    
+    private void Awake()
+    {
+        if (Instance == null)
+        {
+            Instance = this;
+        }
+        else
+        {
+            Destroy(gameObject);
+        }
     }
 
     public override void FixedUpdateNetwork()
@@ -68,12 +84,12 @@ public class GameManager : NetworkBehaviour, IPlayerJoined, IPlayerLeft
         {
             if (State == GameState.Playing)
             {
-                UIManager.Singleton.UpdateTimer(Timer);
-                UIManager.Singleton.UpdateLeaderBoard(Players.OrderByDescending(p => p.Value.Score).ToArray());
+                UIManager.Instance.UpdateTimer(Timer);
+                UIManager.Instance.UpdateLeaderBoard(Players.OrderByDescending(p => p.Value.Score).ToArray());
             }
             else if (State == GameState.Countdown)
             {
-                UIManager.Singleton.UpdateCountdown(CountdownTimer);
+                UIManager.Instance.UpdateCountdown(CountdownTimer);
             }
         }
     }
@@ -133,7 +149,7 @@ public class GameManager : NetworkBehaviour, IPlayerJoined, IPlayerLeft
 
     private void GameStateChanged()
     {
-        UIManager.Singleton.SetUI(State, Winner);
+        UIManager.Instance.SetUI(State, Winner);
     }
 
     private void PreparePlayers()
@@ -197,5 +213,31 @@ public class GameManager : NetworkBehaviour, IPlayerJoined, IPlayerLeft
 
         // Load the menu scene
         SceneManager.LoadScene(menuSceneName);
+    }
+    
+    public void HandlePlayerDeath(Player player)
+    {
+        if (!HasStateAuthority || player == null)
+            return;
+
+        // Deduct player's score
+        float lostCoinRatio = Random.Range(minLostCoinRatio, maxLostCoinRatio);
+        int lostScore = Mathf.CeilToInt(player.Score * lostCoinRatio / 5f) * 5;
+        player.Score -= lostScore;
+        Vector3 randomOffset = new Vector3(Random.Range(-3f, 3f), 1f, Random.Range(-3f, 3f));
+        Vector3 spawnPosition = player.transform.position + randomOffset;
+
+        if (lostScore > 0)
+        {
+            coinSpawner.SpawnCoin(spawnPosition, lostScore, false);
+        }
+
+        // Teleport player back to spawn point
+        float spacingAngle = 360f / Players.Count;
+        spawnpointPivot.rotation = Quaternion.Euler(0f, Random.Range(0f, 360f), 0f);
+        GetNextSpawnPoint(spacingAngle, out Vector3 position, out Quaternion rotation);
+        player.Teleport(position, rotation);
+
+        Debug.Log($"{player.name} died, lost {lostScore} score, and respawned at {position}.");
     }
 }

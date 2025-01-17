@@ -5,25 +5,24 @@ using UnityEngine;
 
 public class Bullet : NetworkBehaviour
 {
-    [Networked] private TickTimer life { get; set; }
+    public PlayerRef shooter;
+    private int damage;
+    private float speed;
 
-    [SerializeField]
-    private float bulletLifeSpan;
-
-    public void Init()
+    public void Initialize(PlayerRef shooterRef, int bulletDamage, float bulletSpeed)
     {
-        life = TickTimer.CreateFromSeconds(Runner, bulletLifeSpan);
+        shooter = shooterRef;
+        damage = bulletDamage;
+        speed = bulletSpeed;
     }
-    
+
     public override void FixedUpdateNetwork()
     {
-        if (life.Expired(Runner))
-        {
-            Runner.Despawn(Object);
-        }
-        else
-        {
-            transform.position += 5 * transform.forward * Runner.DeltaTime;
-        }
+        transform.Translate(Vector3.forward * speed * Runner.DeltaTime);
+    }
+
+    public void DestroyBullet()
+    {
+        Runner.Despawn(Object);
     }
 }
