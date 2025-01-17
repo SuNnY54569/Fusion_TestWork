@@ -18,27 +18,53 @@ public enum GameState
 
 public class GameManager : NetworkBehaviour, IPlayerJoined, IPlayerLeft
 {
+    // Singleton instance
     public static GameManager Instance;
-    
+
+    #region Game Settings
+    [Header("Game Settings")]
+    [Tooltip("Prefab of the player to spawn when they join.")]
     [SerializeField] private NetworkPrefabRef playerPrefab;
+
+    [Tooltip("Transform of the spawn point for the players.")]
     [SerializeField] private Transform spawnpoint;
+
+    [Tooltip("Transform that controls the pivot point for spawn rotations.")]
     [SerializeField] private Transform spawnpointPivot;
+
+    [Tooltip("CoinSpawner responsible for spawning coins during the game.")]
     [SerializeField] private CoinSpawner coinSpawner;
+
+    [Tooltip("Total game duration in seconds.")]
     [SerializeField] private float gameDuration;
+
+    [Tooltip("Duration for the countdown timer before the game starts.")]
     [SerializeField] private float countdownDuration = 3f;
+
+    [Tooltip("Name of the scene to load when exiting the game.")]
     [SerializeField] private string menuSceneName = "Menu";
-    [SerializeField] [Range(0f, 1f)] private float minLostCoinRatio = 0.3f;
-    [SerializeField] [Range(0f, 1f)] private float maxLostCoinRatio = 0.5f;
-    
+
+    [Range(0f, 1f)]
+    [Tooltip("Minimum ratio of lost coin when a player dies.")]
+    [SerializeField] private float minLostCoinRatio = 0.3f;
+
+    [Range(0f, 1f)]
+    [Tooltip("Maximum ratio of lost coin when a player dies.")]
+    [SerializeField] private float maxLostCoinRatio = 0.5f;
+
+    [Tooltip("Minimum number of players required to start the game.")]
     public int minimumPlayers = 2;
-    
+    #endregion
+
+    #region Networked Variables
+    // Networked variables for managing players, timers, and game state.
     [Networked] private Player Winner { get; set; }
     [Networked] public float Timer { get; set; }
-    [Networked] private float CountdownTimer { get; set; } 
+    [Networked] private float CountdownTimer { get; set; }
     [Networked, OnChangedRender(nameof(GameStateChanged))] public GameState State { get; set; }
     [Networked] private NetworkDictionary<PlayerRef, Player> Players => default;
-
     [Networked] public bool reachMinimumPlayer { get; set; }
+    #endregion
 
     private InputManager inputManager;
 
@@ -49,10 +75,7 @@ public class GameManager : NetworkBehaviour, IPlayerJoined, IPlayerLeft
         Winner = null;
         State = GameState.Waiting;
         
-        int readyCount = Players.Count(p => p.Value.IsReady);
-        int totalPlayers = Players.Count;
-        
-        UIManager.Instance?.SetUI(State, Winner, readyCount, totalPlayers);
+        UIManager.Instance?.SetUI(State, Winner);
         Runner.SetIsSimulated(Object, true);
     }
     
@@ -92,6 +115,7 @@ public class GameManager : NetworkBehaviour, IPlayerJoined, IPlayerLeft
             }
         }
 
+        // Update UI elements based on the game state
         if (!Runner.IsResimulation)
         {
             if (State == GameState.Playing)
@@ -106,22 +130,20 @@ public class GameManager : NetworkBehaviour, IPlayerJoined, IPlayerLeft
         }
     }
     
+    // Handle game logic during the waiting state (before game starts)
     private void HandleWaitingState()
     {
         if (Players.Count < minimumPlayers)
         {
-            // Do not proceed with game start, keep waiting
+            // Not enough players to start the game, show UI message
             UIManager.Instance.NotEnoughPlayer(minimumPlayers);
             reachMinimumPlayer = false;
             return;
         }
         else
         {
-            int readyCount = Players.Count(p => p.Value.IsReady);
-            int totalPlayers = Players.Count;
-            
             reachMinimumPlayer = true;
-            UIManager.Instance.SetUI(State, Winner, readyCount, totalPlayers);
+            UIManager.Instance.SetUI(State, Winner);
             
             if (HasInputAuthority && inputManager.LocalPlayer.IsReady)
             {
@@ -129,17 +151,17 @@ public class GameManager : NetworkBehaviour, IPlayerJoined, IPlayerLeft
             }
         }
         
-        // Check if all players are ready
+        // Check if all players are ready to start the game
         bool areAllReady = Players.All(p => p.Value.IsReady);
 
         if (areAllReady)
         {
-            // Transition to Countdown state
             CountdownTimer = countdownDuration;
             State = GameState.Countdown;
         }
     }
     
+    // Handle countdown state before the game starts
     private void HandleCountdownState()
     {
         CountdownTimer -= Runner.DeltaTime;
@@ -169,6 +191,7 @@ public class GameManager : NetworkBehaviour, IPlayerJoined, IPlayerLeft
         }
     }
     
+    // End the game, determine the winner, and reset the game state
     private void EndGame()
     {
         Winner = Players.Select(kvp => kvp.Value).OrderByDescending(p => p.Score).FirstOrDefault();
@@ -186,12 +209,10 @@ public class GameManager : NetworkBehaviour, IPlayerJoined, IPlayerLeft
 
     private void GameStateChanged()
     {
-        int readyCount = Players.Count(p => p.Value.IsReady);
-        int totalPlayers = Players.Count;
-        
-        UIManager.Instance.SetUI(State, Winner, readyCount, totalPlayers);
+        UIManager.Instance.SetUI(State, Winner);
     }
 
+    // Prepare players by assigning them random spawn positions
     private void PreparePlayers()
     {
         float radius = Vector3.Distance(spawnpoint.position, spawnpointPivot.position);
@@ -220,6 +241,7 @@ public class GameManager : NetworkBehaviour, IPlayerJoined, IPlayerLeft
         }
     }
 
+    // Get the next spawn point for players with a specified angle
     private void GetNextSpawnPoint(float spacingAngle, out Vector3 position, out Quaternion rotation)
     {
         position = spawnpoint.position;
@@ -264,6 +286,7 @@ public class GameManager : NetworkBehaviour, IPlayerJoined, IPlayerLeft
         SceneManager.LoadScene(menuSceneName);
     }
     
+    // Method to handle player death and deduct score, spawn coins, and teleport player
     public void HandlePlayerDeath(Player player)
     {
         if (!HasStateAuthority || player == null)
@@ -273,25 +296,31 @@ public class GameManager : NetworkBehaviour, IPlayerJoined, IPlayerLeft
         float lostCoinRatio = Random.Range(minLostCoinRatio, maxLostCoinRatio);
         int lostScore = Mathf.Max(5, Mathf.CeilToInt(player.Score * lostCoinRatio / 5f) * 5);
         player.Score -= lostScore;
-        
-        if (coinSpawner == null)
+        if (player.Score <= 0)
         {
-            Debug.LogError("CoinSpawner is not assigned!");
-            return;
+            player.Score = 0;
         }
         
+        // Create a random offset for the coin spawn position
         Vector3 randomOffset = new Vector3(
             Random.Range(-3f, 3f), 
             1f, 
             Random.Range(-3f, 3f)
         );
         Vector3 spawnPosition = player.transform.position + randomOffset;
+        
+        if (coinSpawner == null)
+        {
+            Debug.LogError("CoinSpawner is not assigned!");
+            return;
+        }
 
         if (lostScore > 0)
         {
             coinSpawner.SpawnCoin(spawnPosition, lostScore, false);
         }
-
+            
+        // Generate a random position for the spawn
         float radius = Vector3.Distance(spawnpoint.position, spawnpointPivot.position);
         float randomAngle = Random.Range(0f, 360f) * Mathf.Deg2Rad;
         Vector3 position = spawnpointPivot.position + new Vector3(

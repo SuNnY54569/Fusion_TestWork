@@ -5,46 +5,67 @@ using UnityEngine;
 
 public class CoinSpawner : NetworkBehaviour
 {
-    [SerializeField] private NetworkPrefabRef coinPrefab;
-    [SerializeField] private NetworkPrefabRef dropCoinPrefab;
-    [SerializeField] private float spawnInterval = 5f;
-    [SerializeField] private Vector3 spawnAreaMin;
-    [SerializeField] private Vector3 spawnAreaMax;
-    [SerializeField] private int maxCoinsOnMap = 10;
-    [SerializeField] private int currentCoinCount = 0;
-    [SerializeField] private int coinValue = 10;
+    #region Variables
     
+    [Header("Coin Prefabs")]
+    [Tooltip("Prefab for the standard coin to spawn.")]
+    [SerializeField] private NetworkPrefabRef coinPrefab;
+
+    [Tooltip("Prefab for the dropped coin, used when a coin is from player dead")]
+    [SerializeField] private NetworkPrefabRef dropCoinPrefab;
+
+    [Header("Spawning Parameters")]
+    [Tooltip("Time interval between coin spawns.")]
+    [SerializeField] private float spawnInterval = 5f;
+
+    [Tooltip("Minimum bounds for the coin spawning area.")]
+    [SerializeField] private Vector3 spawnAreaMin;
+
+    [Tooltip("Maximum bounds for the coin spawning area.")]
+    [SerializeField] private Vector3 spawnAreaMax;
+
+    [Tooltip("Maximum number of coins that can exist at once.")]
+    [SerializeField] private int maxCoinsOnMap = 10;
+
+    [Tooltip("Current number of coins on the map.")]
+    [SerializeField] private int currentCoinCount = 0;
+
+    [Tooltip("Value of each coin spawned.")]
+    [SerializeField] private int coinValue = 10;
+
     private bool isSpawning = false;
     private Coroutine spawnCoroutine;
     private List<NetworkObject> spawnedCoins = new List<NetworkObject>();
+    
+    #endregion
 
+    //Starts the coin spawning process
     public void StartSpawning()
     {
         if (isSpawning) return;
         isSpawning = true;
-
-        // Start by spawning enough coins to reach the maximum limit
+        
         SpawnCoinsToMax();
 
         spawnCoroutine = StartCoroutine(SpawnCoinsPeriodically());
     }
     
+    //Spawns coins to reach the maximum coin count.
     private void SpawnCoinsToMax()
     {
-        // Spawn coins to fill the map up to maxCoinsOnMap
         while (currentCoinCount < maxCoinsOnMap)
         {
             SpawnCoin(GetRandomPositionInArea(), coinValue);
         }
     }
 
+    //Spawns coins periodically based on the specified interval.
     private IEnumerator SpawnCoinsPeriodically()
     {
         while (isSpawning)
         {
             yield return new WaitForSeconds(spawnInterval);
-
-            // Only spawn if there are fewer than the max allowed coins
+            
             if (currentCoinCount < maxCoinsOnMap)
             {
                 SpawnCoin(GetRandomPositionInArea(), coinValue);
@@ -52,9 +73,10 @@ public class CoinSpawner : NetworkBehaviour
         }
     }
 
+    //Spawns a single coin at a specified position.
     public void SpawnCoin(Vector3 position, int value, bool countCoin = true)
     {
-        if (!Runner.IsServer) return; // Only the server spawns coins
+        if (!Runner.IsServer) return;
 
         NetworkObject spawnedCoin;
 
@@ -75,8 +97,7 @@ public class CoinSpawner : NetworkBehaviour
         {
             Debug.LogWarning("The spawned coin does not have a Coin component!");
         }
-
-        // Ensure the coin has a NetworkTransform to synchronize its position
+        
         if (!spawnedCoin.TryGetComponent(out NetworkTransform _))
         {
             spawnedCoin.gameObject.AddComponent<NetworkTransform>();
@@ -90,6 +111,7 @@ public class CoinSpawner : NetworkBehaviour
         }
     }
 
+    //Generates a random position within the defined spawn area that is not occupied.
     private Vector3 GetRandomPositionInArea()
     {
         Vector3 spawnPosition = Vector3.zero;
@@ -102,12 +124,11 @@ public class CoinSpawner : NetworkBehaviour
             float z = Random.Range(spawnAreaMin.z, spawnAreaMax.z);
 
             spawnPosition = new Vector3(x, y, z);
-
-            // Check if the spawn position is free (no colliders in the area)
+            
             if (!IsPositionOccupied(spawnPosition))
             {
                 validPosition = true;
-                break; // Exit the loop when a valid position is found
+                break; 
             }
         }
         
@@ -136,9 +157,10 @@ public class CoinSpawner : NetworkBehaviour
         currentCoinCount--;
     }
     
+    //Removes all spawned coins from the game.
     public void RemoveAllCoins()
     {
-        if (!Runner.IsServer) return; // Only the server removes coins
+        if (!Runner.IsServer) return;
 
         for (int i = spawnedCoins.Count - 1; i >= 0; i--)
         {
@@ -153,21 +175,18 @@ public class CoinSpawner : NetworkBehaviour
         currentCoinCount = 0;
     }
     
+    //Checks if a given position is already occupied by a collider.
     private bool IsPositionOccupied(Vector3 position)
     {
-        // Use Physics.OverlapSphere or any other suitable method to check for colliders
-        Collider[] colliders = Physics.OverlapSphere(position, 0.5f); // 0.5f is the radius for checking the area
-
-        // If any colliders are found, the position is occupied
+        Collider[] colliders = Physics.OverlapSphere(position, 0.5f);
+        
         return colliders.Length > 0;
     }
     
     private void OnDrawGizmos()
     {
-        // Set the color of the gizmo (change it as you like)
-        Gizmos.color = new Color(0f, 1f, 0f, 0.3f); // Green with transparency
-
-        // Draw the wireframe cube to represent the spawn area
+        Gizmos.color = new Color(0f, 1f, 0f, 0.3f);
+        
         Vector3 size = spawnAreaMax - spawnAreaMin;
         Vector3 center = (spawnAreaMin + spawnAreaMax) / 2;
 

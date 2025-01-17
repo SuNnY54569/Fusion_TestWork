@@ -8,16 +8,37 @@ using UnityEngine.UI;
 
 public class MenuManager : MonoBehaviour
 {
+    #region Variables
+    
+    [Header("Network Runner Settings")]
+    [Tooltip("Prefab of the NetworkRunner instance used for connecting to rooms.")]
     [SerializeField] private NetworkRunner networkRunnerPrefab;
+
+    [Header("UI Elements")]
+    [Tooltip("Button to create a new room.")]
     [SerializeField] private Button createRoomButton;
+    [Tooltip("Button to join an existing room.")]
     [SerializeField] private Button joinRoomButton;
+
+    [Header("Input Fields")]
+    [Tooltip("Input field for setting a new room name.")]
     [SerializeField] private TMP_InputField setRoomNameInput;
+    [Tooltip("Input field for entering the room code when joining.")]
     [SerializeField] private TMP_InputField roomNameInput;
+    [Tooltip("Input field for entering player name.")]
     [SerializeField] private TMP_InputField playerNameInput;
+
+    [Header("Status Text")]
+    [Tooltip("Text element to display status messages.")]
     [SerializeField] private TMP_Text statusText;
+
+    [Header("Scene Settings")]
+    [Tooltip("Name of the gameplay scene to load.")]
     [SerializeField] private string _gameSceneName = "Gameplay";
     
     private NetworkRunner runnerInstance;
+    
+    #endregion
 
     void Start()
     {
@@ -30,6 +51,8 @@ public class MenuManager : MonoBehaviour
         }
     }
 
+    #region Button Handlers
+    
     // Function to handle creating a room
     private void OnCreateRoomClicked()
     {
@@ -78,6 +101,11 @@ public class MenuManager : MonoBehaviour
         StartGame(GameMode.Client, roomNameInput.text, _gameSceneName);
     }
     
+    #endregion
+    
+    #region Game Start Logic
+    
+    // Function to start the game by either creating or joining a room
     private async void StartGame(GameMode mode, string roomName, string sceneName)
     {
         createRoomButton.interactable = false;
@@ -96,9 +124,7 @@ public class MenuManager : MonoBehaviour
             GameMode = mode,
             SessionName = roomName,
         };
-
-        // GameMode.Host = Start a session with a specific name
-        // GameMode.Client = Join a session with a specific name
+        
         var result = await runnerInstance.StartGame(startGameArgs);
 
         if (result.Ok)
@@ -117,4 +143,6 @@ public class MenuManager : MonoBehaviour
         createRoomButton.interactable = true;
         joinRoomButton.interactable = true;
     }
+    
+    #endregion
 }

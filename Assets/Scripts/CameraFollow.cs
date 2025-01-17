@@ -5,43 +5,23 @@ using UnityEngine;
 
 public class CameraFollow : MonoBehaviour
 {
-     public static CameraFollow Singleton
-     {
-          get => _singleton;
-          set
-          {
-               if (value == null)
-               {
-                    _singleton = null;
-               }
-               else if(_singleton == null)
-               {
-                    _singleton = value;
-               }
-               else if (_singleton != value)
-               {
-                    Destroy(value);
-                    Debug.LogError($"There should only ever be one instance of {nameof(CameraFollow)}!");
-               }
-          }
-     }
-
-     private static CameraFollow _singleton;
+     public static CameraFollow Instance;
 
      private Transform target;
      
+     [Header("Camera Follow Settings")]
+     [Tooltip("Smooth speed for camera movement. The higher the value, the faster the camera will follow.")]
      [SerializeField] private float smoothSpeed = 0.125f;
 
      private void Awake()
      {
-          Singleton = this;
-     }
-
-     private void OnDestroy()
-     {
-          if (Singleton == this)
+          if (Instance == null)
           {
-               Singleton = null;
+               Instance = this;
+          }
+          else
+          {
+               Destroy(gameObject);
           }
      }
 
@@ -49,14 +29,17 @@ public class CameraFollow : MonoBehaviour
      {
           if (target != null)
           {
+               //Smoothly interpolate between the camera's current position and the target's position
                Vector3 smoothedPosition = Vector3.Lerp(transform.position, target.position, smoothSpeed);
                transform.position = smoothedPosition;
 
+               //Smoothly interpolate between the camera's current rotation and the target's rotation
                Quaternion smoothedRotation = Quaternion.Slerp(transform.rotation, target.rotation, smoothSpeed);
                transform.rotation = smoothedRotation;
           }
      }
 
+     //Sets the target for the camera to follow.
      public void SetTarget(Transform newTarget)
      {
           target = newTarget;

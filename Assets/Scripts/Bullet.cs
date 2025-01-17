@@ -5,16 +5,20 @@ using UnityEngine;
 
 public class Bullet : NetworkBehaviour
 {
+    [Header("Bullet Settings")]
+    [Tooltip("The player who shot the bullet.")]
     public PlayerRef shooter;
-    private int damage;
+
+    [Tooltip("The speed of the bullet.")]
     private float speed;
-    
+
+    [Header("Collision Settings")]
+    [Tooltip("LayerMask for obstacles the bullet can collide with.")]
     [SerializeField] private LayerMask obstacleLayer;
 
-    public void Initialize(PlayerRef shooterRef, int bulletDamage, float bulletSpeed)
+    public void Initialize(PlayerRef shooterRef, float bulletSpeed)
     {
         shooter = shooterRef;
-        damage = bulletDamage;
         speed = bulletSpeed;
     }
 

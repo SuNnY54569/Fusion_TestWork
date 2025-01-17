@@ -6,22 +6,49 @@ using UnityEngine;
 
 public class UIManager : MonoBehaviour
 {
+    #region Variables
+    
     public static UIManager Instance;
 
     private static UIManager _singleton;
 
+    [Header("UI Elements")]
+    [Tooltip("The leaderboard UI object.")]
     [SerializeField] private GameObject leaderBoard;
+
+    [Tooltip("Text UI element to display the current game state.")]
     [SerializeField] private TMP_Text gameStateText;
+
+    [Tooltip("Text UI element to display instructions to the player.")]
     [SerializeField] private TMP_Text instructionText;
+
+    [Tooltip("Text UI element to display the player's score.")]
     [SerializeField] private TMP_Text playerScoreText;
+
+    [Tooltip("Text UI element to display the countdown timer.")]
     [SerializeField] private TMP_Text timerText;
+
+    [Tooltip("Text UI element to display the countdown timer.")]
     [SerializeField] private TMP_Text countdownText;
+
+    [Tooltip("Text UI element to display the player's health.")]
     [SerializeField] private TMP_Text playerHealthText;
+
+    [Tooltip("Reference to the GameManager.")]
     [SerializeField] private GameManager gameManager;
+
+    [Tooltip("The menu button that appears during the waiting state.")]
     [SerializeField] private GameObject menuButton;
+
+    [Tooltip("Crosshair that will guide player to shoot the bullet")] 
+    [SerializeField] private GameObject crosshair;
+
+    [Tooltip("Array of leaderboard item UI elements.")]
     [SerializeField] private LeaderboardItem[] leaderboardItems;
 
     private InputManager inputManager;
+    
+    #endregion
     
     private void Awake()
     {
@@ -45,6 +72,7 @@ public class UIManager : MonoBehaviour
         }
     }
     
+    //Update the player's score in the UI.
     public void UpdatePlayerScore(int newScore)
     {
         if (playerScoreText != null)
@@ -57,6 +85,7 @@ public class UIManager : MonoBehaviour
         }
     }
     
+    // Update the player's health in the UI.
     public void UpdatePlayerHealth(int health)
     {
         if (playerHealthText != null)
@@ -69,21 +98,25 @@ public class UIManager : MonoBehaviour
         }
     }
 
+    // Update the UI when there are not enough players to start the game.
     public void NotEnoughPlayer(int minPlayersRequired)
     {
         gameStateText.text = "Waiting for more players";
         instructionText.text = $"at least {minPlayersRequired} players to start the game.";
     }
 
+    // Update the UI when a player sets themselves as ready.
     public void DidSetReady()
     {
         instructionText.text = "Waiting for other players to be ready";
     }
 
-    public void SetUI(GameState newState, Player winner, int readyCount, int totalPlayers)
+    //Update the UI based on the current game state and winner.
+    public void SetUI(GameState newState, Player winner)
     {
         menuButton.SetActive(newState == GameState.Waiting);
         leaderBoard.SetActive(newState == GameState.Playing);
+        crosshair.SetActive(newState == GameState.Playing);
         playerHealthText.enabled = newState == GameState.Playing;
         playerScoreText.enabled = newState == GameState.Playing;
         timerText.enabled = newState == GameState.Playing;
@@ -96,16 +129,17 @@ public class UIManager : MonoBehaviour
             if (winner == null)
             {
                 gameStateText.text = "Waiting to Start";
-                instructionText.text = $"Press R when you are ready ({readyCount}/{totalPlayers} ready)";
+                instructionText.text = $"Press R when you are ready";
             }
             else
             {
                 gameStateText.text = $"{winner.Name} Wins";
-                instructionText.text = $"Press R when you're Ready to play again ({readyCount}/{totalPlayers} ready)";
+                instructionText.text = $"Press R when you're Ready to play again";
             }
         }
     }
 
+    //Update the leaderboard with the current players' scores.
     public void UpdateLeaderBoard(KeyValuePair<Fusion.PlayerRef, Player>[] players)
     {
         for (int i = 0; i < leaderboardItems.Length; i++)

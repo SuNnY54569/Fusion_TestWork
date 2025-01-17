@@ -10,25 +10,31 @@ using UnityEngine.SceneManagement;
 
 public class InputManager : SimulationBehaviour, IBeforeUpdate, INetworkRunnerCallbacks
 {
+    [Header("Player Settings")]
+    [Tooltip("The local player in the game.")]
     public Player LocalPlayer;
 
+    [Tooltip("The accumulated mouse delta for look movement.")]
     public Vector2 AccumulatedMouseDelta => mouseDeltaAccumulator.AccumulatedValue;
-    
-    private NetInput accumulatedInput;
-    private Vector2Accumulator mouseDeltaAccumulator = new() { SmoothingWindow = 0.025f };
-    private bool resetInput;
 
+    private NetInput accumulatedInput; // Stores the accumulated input for the current frame
+    private Vector2Accumulator mouseDeltaAccumulator = new() { SmoothingWindow = 0.025f }; // Accumulates mouse delta for smoothing
+    private bool resetInput; // Flag to reset input after processing
+    
     public void BeforeUpdate()
     {
+        // Reset input
         if (resetInput)
         {
             resetInput = false;
             accumulatedInput = default;
         }
 
+        // Check for keyboard input
         Keyboard keyboard = Keyboard.current;
         if (keyboard != null && (keyboard.enterKey.wasPressedThisFrame || keyboard.numpadEnterKey.wasPressedThisFrame || keyboard.escapeKey.wasPressedThisFrame))
         {
+            // Toggle cursor lock state
             if (Cursor.lockState == CursorLockMode.Locked)
             {
                 Cursor.lockState = CursorLockMode.None;
@@ -46,6 +52,7 @@ public class InputManager : SimulationBehaviour, IBeforeUpdate, INetworkRunnerCa
 
         NetworkButtons buttons = default;
         
+        // Process mouse input for look rotation
         Mouse mouse = Mouse.current;
         if (mouse != null)
         {
@@ -59,8 +66,10 @@ public class InputManager : SimulationBehaviour, IBeforeUpdate, INetworkRunnerCa
             }
         }
 
+        // Process keyboard input for movement
         if (keyboard != null)
         {
+            // Handle "R" key for ready state
             if (keyboard.rKey.wasPressedThisFrame && LocalPlayer != null)
             {
                 LocalPlayer.RPC_SetReady();
@@ -68,6 +77,7 @@ public class InputManager : SimulationBehaviour, IBeforeUpdate, INetworkRunnerCa
             
             Vector2 moveDirection = Vector2.zero;
 
+            // Handle WASD keys for directional movement
             if (keyboard.wKey.isPressed)
                 moveDirection += Vector2.up;
             if (keyboard.sKey.isPressed)
@@ -78,11 +88,13 @@ public class InputManager : SimulationBehaviour, IBeforeUpdate, INetworkRunnerCa
                 moveDirection += Vector2.right;
 
             accumulatedInput.Direction += moveDirection;
-            buttons.Set(InputButton.Jump, keyboard.spaceKey.isPressed);
+            buttons.Set(InputButton.Jump, keyboard.spaceKey.isPressed); // Handle jump action
         }
 
         accumulatedInput.Buttons = new NetworkButtons(accumulatedInput.Buttons.Bits | buttons.Bits);
     }
+    
+    #region Callbacks
     
     public void OnPlayerJoined(NetworkRunner runner, PlayerRef player)
     {
@@ -109,7 +121,11 @@ public class InputManager : SimulationBehaviour, IBeforeUpdate, INetworkRunnerCa
         input.Set(accumulatedInput);
         resetInput = true;
     }
+    
+    #endregion
 
+    #region Unused Callbacks
+    
     public void OnObjectExitAOI(NetworkRunner runner, NetworkObject obj, PlayerRef player)
     {
         
@@ -189,4 +205,6 @@ public class InputManager : SimulationBehaviour, IBeforeUpdate, INetworkRunnerCa
     {
         
     }
+    
+    #endregion
 }

@@ -5,15 +5,24 @@ using UnityEngine;
 
 public class Coin : NetworkBehaviour
 {
+    [Header("Coin Settings")]
+    [Tooltip("The score value this coin will give when picked up.")]
     [SerializeField] private int scoreValue = 10;
+
+    [Tooltip("The rotation speed of the coin, in degrees per second.")]
     [SerializeField] private float rotationSpeed = 360f;
+
+    [Tooltip("The 3D model of the coin.")]
     [SerializeField] private GameObject coinModel;
+
+    [Tooltip("The material used for the coin when it is dropped.")]
     [SerializeField] private Material dropCoinMat;
 
     [Networked] public NetworkBool Collected { get; set; } = false;
 
     public bool CanPickUp => !Collected;
     
+    // Local method called when the player attempts to pick up the coin.
     public void OnPickUpLocal(Player player)
     {
         RPC_Collect(player);
@@ -28,6 +37,7 @@ public class Coin : NetworkBehaviour
         }
     }
 
+    //rewards the player with points, marks the coin as collected, and despawn it.
     [Rpc(RpcSources.All, RpcTargets.StateAuthority)]
     public void RPC_Collect(Player collector)
     {
@@ -46,10 +56,5 @@ public class Coin : NetworkBehaviour
     public void SetCoinValue(int value)
     {
         scoreValue = value;
-    }
-
-    public void ChangeCoinColor()
-    {
-        
     }
 }
