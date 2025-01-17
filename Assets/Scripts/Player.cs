@@ -91,7 +91,7 @@ public class Player : NetworkBehaviour
 
     public override void Render()
     {
-        if (kcc.Settings.ForcePredictedLookRotation)
+        if (kcc.Settings.ForcePredictedLookRotation && HasInputAuthority)
         {
             Vector2 predictedLookRotation = baseLookRotation + inputManager.AccumulatedMouseDelta * lookSensitivity;
             kcc.SetLookRotation(predictedLookRotation);

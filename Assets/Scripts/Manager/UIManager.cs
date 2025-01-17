@@ -3,6 +3,7 @@ using System.Collections;
 using System.Collections.Generic;
 using TMPro;
 using UnityEngine;
+using UnityEngine.UI;
 
 public class UIManager : MonoBehaviour
 {
@@ -32,9 +33,12 @@ public class UIManager : MonoBehaviour
     [SerializeField] private GameObject leaderBoard;
     [SerializeField] private TMP_Text gameStateText;
     [SerializeField] private TMP_Text instructionText;
-    [SerializeField] private LeaderboardItem[] leaderboardItems;
     [SerializeField] private TMP_Text playerScoreText;
     [SerializeField] private TMP_Text timerText;
+    [SerializeField] private TMP_Text countdownText;
+    [SerializeField] private GameManager gameManager;
+    [SerializeField] private Button menuButton;
+    [SerializeField] private LeaderboardItem[] leaderboardItems;
     
     private Player localPlayer;
     
@@ -89,12 +93,14 @@ public class UIManager : MonoBehaviour
             }
             
         }
-        
+
+        menuButton.enabled = newState == GameState.Waiting;
         leaderBoard.SetActive(newState == GameState.Playing);
         playerScoreText.enabled = newState == GameState.Playing;
         timerText.enabled = newState == GameState.Playing;
         gameStateText.enabled = newState == GameState.Waiting;
         instructionText.enabled = newState == GameState.Waiting;
+        countdownText.enabled = newState == GameState.Countdown;
     }
 
     public void UpdateLeaderBoard(KeyValuePair<Fusion.PlayerRef, Player>[] players)
@@ -127,11 +133,21 @@ public class UIManager : MonoBehaviour
         }
     }
     
+    public void UpdateCountdown(float countdownTimer)
+    {
+        countdownText.text = Mathf.CeilToInt(countdownTimer).ToString();
+    }
+    
     public void UpdateTimer(float timeLeft)
     {
         // Display the timer in MM:SS format
         string formattedTime = $"{Mathf.FloorToInt(timeLeft / 60):00}:{Mathf.FloorToInt(timeLeft % 60):00}";
         timerText.text = formattedTime; // Assuming you have a Text or TMP_Text called timerText
+    }
+    
+    public void OnExitButtonClick()
+    {
+        gameManager.ExitRoom();
     }
     
     [Serializable]

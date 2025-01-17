@@ -15,7 +15,7 @@ public class MenuManager : MonoBehaviour
     [SerializeField] private TMP_InputField roomNameInput;
     [SerializeField] private TMP_InputField playerNameInput;
     [SerializeField] private TMP_Text statusText;
-    [SerializeField] private string _gameSceneName = "Gameplay 1";
+    [SerializeField] private string _gameSceneName = "Gameplay";
     
     private NetworkRunner runnerInstance;
 

@@ -4,12 +4,15 @@ using System.Collections.Generic;
 using System.Linq;
 using Fusion;
 using Fusion.Sockets;
+using Unity.VisualScripting;
 using UnityEngine;
+using UnityEngine.SceneManagement;
 using Random = UnityEngine.Random;
 
 public enum GameState
 {
     Waiting,
+    Countdown,
     Playing,
 }
 
@@ -20,22 +23,22 @@ public class GameManager : NetworkBehaviour, IPlayerJoined, IPlayerLeft
     [SerializeField] private Transform spawnpointPivot;
     [SerializeField] private CoinSpawner coinSpawner;
     [SerializeField] private float gameDuration;
+    [SerializeField] private float countdownDuration = 3f;
+    [SerializeField] private string menuSceneName = "Menu";
     
     [Networked] private Player Winner { get; set; }
-    
     [Networked] public float Timer { get; set; }
+    [Networked] private float CountdownTimer { get; set; } 
     [Networked, OnChangedRender(nameof(GameStateChanged))] private GameState State { get; set; }
     [Networked] private NetworkDictionary<PlayerRef, Player> Players => default;
 
     public override void Spawned()
     {
         Timer = gameDuration;
+        CountdownTimer = countdownDuration;
         Winner = null;
         State = GameState.Waiting;
-        if (UIManager.Singleton != null)
-        {
-            UIManager.Singleton.SetUI(State, Winner);
-        }
+        UIManager.Singleton?.SetUI(State, Winner);
         Runner.SetIsSimulated(Object, true);
     }
 
@@ -43,66 +46,88 @@ public class GameManager : NetworkBehaviour, IPlayerJoined, IPlayerLeft
     {
         if (Players.Count < 1) return;
 
-        if (Runner.IsServer && State == GameState.Waiting)
+        if (Runner.IsServer)
         {
-            bool areAllReady = true;
-            foreach (KeyValuePair<PlayerRef, Player> player in Players)
+            switch (State)
             {
-                if (!player.Value.IsReady)
-                {
-                    areAllReady = false;
+                case GameState.Waiting:
+                    HandleWaitingState();
                     break;
-                }
-            }
 
-            if (areAllReady)
-            {
-                Winner = null;
-                State = GameState.Playing;
-                PreparePlayers();
-                coinSpawner.StartSpawning();
-                foreach (var player in Players)
-                {
-                    player.Value.Score = 0;// Reset score
-                    player.Value.IsReady = false; // Unready the player
-                }
-            }
-        }
-        
-        if (State == GameState.Playing && Runner.IsServer)
-        {
-            Timer -= Runner.DeltaTime; // Countdown
-            if (Timer <= 0)
-            {
-                EndGame();
+                case GameState.Countdown:
+                    HandleCountdownState();
+                    break;
+
+                case GameState.Playing:
+                    HandlePlayingState();
+                    break;
             }
         }
 
-        if (State == GameState.Playing && !Runner.IsResimulation)
+        if (!Runner.IsResimulation)
         {
-            UIManager.Singleton.UpdateTimer(Timer);
-            UIManager.Singleton.UpdateLeaderBoard(Players.OrderByDescending(p => p.Value.Score).ToArray());
+            if (State == GameState.Playing)
+            {
+                UIManager.Singleton.UpdateTimer(Timer);
+                UIManager.Singleton.UpdateLeaderBoard(Players.OrderByDescending(p => p.Value.Score).ToArray());
+            }
+            else if (State == GameState.Countdown)
+            {
+                UIManager.Singleton.UpdateCountdown(CountdownTimer);
+            }
+        }
+    }
+    
+    private void HandleWaitingState()
+    {
+        // Check if all players are ready
+        bool areAllReady = Players.All(p => p.Value.IsReady);
+
+        if (areAllReady)
+        {
+            // Transition to Countdown state
+            CountdownTimer = countdownDuration;
+            State = GameState.Countdown;
+        }
+    }
+    
+    private void HandleCountdownState()
+    {
+        CountdownTimer -= Runner.DeltaTime;
+
+        if (CountdownTimer <= 0)
+        {
+            // Transition to Playing state
+            CountdownTimer = 0;
+            State = GameState.Playing;
+            PreparePlayers();
+            coinSpawner.StartSpawning();
+
+            foreach (var player in Players)
+            {
+                player.Value.Score = 0;        // Reset score
+                player.Value.IsReady = false; // Unready players
+            }
+        }
+    }
+    
+    private void HandlePlayingState()
+    {
+        Timer -= Runner.DeltaTime; // Countdown game duration
+        if (Timer <= 0)
+        {
+            EndGame();
         }
     }
     
     private void EndGame()
     {
-        // Determine the player with the highest score
         Winner = Players.Select(kvp => kvp.Value).OrderByDescending(p => p.Score).FirstOrDefault();
-    
-        // Set the game state back to waiting
         State = GameState.Waiting;
-    
-        // Stop spawning coins
         coinSpawner.StopSpawning();
         coinSpawner.RemoveAllCoins();
-    
-        // Update UI
         GameStateChanged();
-
-        // Unready all players to prepare for the next round
         UnreadyAll();
-        
         Timer = gameDuration;
     }
 
@@ -158,5 +183,19 @@ public class GameManager : NetworkBehaviour, IPlayerJoined, IPlayerLeft
             Runner.Despawn(playerBehaviour.Object);
             Debug.Log("DeSpawn Player");
         }
+    }
+    
+    public void ExitRoom()
+    {
+        if (Runner != null)
+        {
+            Debug.Log("Player exiting the room...");
+
+            // Shut down the runner session (this will trigger OnShutdown for clients)
+            Runner.Shutdown();
+        }
+
+        // Load the menu scene
+        SceneManager.LoadScene(menuSceneName);
     }
 }

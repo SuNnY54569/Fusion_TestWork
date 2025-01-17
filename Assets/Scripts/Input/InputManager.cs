@@ -6,6 +6,7 @@ using Fusion.Addons.SimpleKCC;
 using Fusion.Sockets;
 using UnityEngine;
 using UnityEngine.InputSystem;
+using UnityEngine.SceneManagement;
 
 public class InputManager : SimulationBehaviour, IBeforeUpdate, INetworkRunnerCallbacks
 {
@@ -91,6 +92,9 @@ public class InputManager : SimulationBehaviour, IBeforeUpdate, INetworkRunnerCa
     {
         Cursor.lockState = CursorLockMode.None;
         Cursor.visible = true;
+
+        SceneManager.LoadScene("Menu");
+        Debug.Log(shutdownReason);
     }
     
     public void OnInput(NetworkRunner runner, NetworkInput input)

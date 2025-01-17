@@ -3264,7 +3264,7 @@ MonoBehaviour:
   roomNameInput: {fileID: 712733344}
   playerNameInput: {fileID: 1955195536}
   statusText: {fileID: 1968343580}
-  _gameSceneName: Gameplay 1
+  _gameSceneName: Gameplay
 --- !u!4 &1868079383
 Transform:
   m_ObjectHideFlags: 0
