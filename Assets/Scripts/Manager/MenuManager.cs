@@ -13,6 +13,7 @@ public class MenuManager : MonoBehaviour
     [SerializeField] private Button joinRoomButton;
     [SerializeField] private TMP_InputField setRoomNameInput;
     [SerializeField] private TMP_InputField roomNameInput;
+    [SerializeField] private TMP_InputField playerNameInput;
     [SerializeField] private TMP_Text statusText;
     [SerializeField] private string _gameSceneName = "Gameplay 1";
     
@@ -22,17 +23,32 @@ public class MenuManager : MonoBehaviour
     {
         createRoomButton.onClick.AddListener(OnCreateRoomClicked);
         joinRoomButton.onClick.AddListener(OnJoinRoomClicked);
+
+        if (PlayerPrefs.HasKey("PlayerName"))
+        {
+            playerNameInput.text = PlayerPrefs.GetString("PlayerName");
+        }
     }
 
     // Function to handle creating a room
     private void OnCreateRoomClicked()
     {
         string roomName = setRoomNameInput.text.Trim();
+        string playerName = playerNameInput.text.Trim();
+        
+        if (string.IsNullOrEmpty(playerName))
+        {
+            statusText.text = "Please enter a player name.";
+            return;
+        }
+        
         if (string.IsNullOrEmpty(roomName))
         {
             statusText.text = "Please enter a valid room name.";
             return;
         }
+        
+        PlayerPrefs.SetString("PlayerName", playerName);
         
         statusText.text = "Creating Room...";
         StartGame(GameMode.AutoHostOrClient, setRoomNameInput.text, _gameSceneName);
@@ -42,11 +58,21 @@ public class MenuManager : MonoBehaviour
     private void OnJoinRoomClicked()
     {
         string roomCode = roomNameInput.text.Trim();
+        string playerName = playerNameInput.text.Trim();
+        
+        if (string.IsNullOrEmpty(playerName))
+        {
+            statusText.text = "Please enter a player name.";
+            return;
+        }
+        
         if (string.IsNullOrEmpty(roomCode))
         {
             statusText.text = "Please enter a valid room code.";
             return;
         }
+        
+        PlayerPrefs.SetString("PlayerName", playerName);
         
         statusText.text = "Joining Room...";
         StartGame(GameMode.Client, roomNameInput.text, _gameSceneName);

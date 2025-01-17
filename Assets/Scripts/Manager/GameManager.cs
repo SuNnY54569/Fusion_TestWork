@@ -60,10 +60,10 @@ public class GameManager : NetworkBehaviour, IPlayerJoined, IPlayerLeft
             }
         }
 
-        /*if (State == GameState.Playing && !Runner.IsResimulation)
+        if (State == GameState.Playing && !Runner.IsResimulation)
         {
             UIManager.Singleton.UpdateLeaderBoard(Players.OrderByDescending(p => p.Value.Score).ToArray());
-        }*/
+        }
     }
 
     private void GameStateChanged()

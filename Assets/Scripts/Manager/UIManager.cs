@@ -32,10 +32,19 @@ public class UIManager : MonoBehaviour
     [SerializeField] private TMP_Text gameStateText;
     [SerializeField] private TMP_Text instructionText;
     [SerializeField] private LeaderboardItem[] leaderboardItems;
+    [SerializeField] private TMP_Text playerScoreText;
+    
+    private Player localPlayer;
     
     private void Awake()
     {
         Singleton = this;
+        
+        localPlayer = FindLocalPlayer(); 
+        if (localPlayer != null)
+        {
+            playerScoreText.text = $"Your Score: {localPlayer.Score}"; // Set the local player score initially
+        }
     }
 
     private void OnDestroy()
@@ -43,6 +52,14 @@ public class UIManager : MonoBehaviour
         if (Singleton == this)
         {
             Singleton = null;
+        }
+    }
+    
+    public void UpdatePlayerScore(int newScore)
+    {
+        if (playerScoreText != null)
+        {
+            playerScoreText.text = $"Your Score: {newScore}"; // Update the score text with the new value
         }
     }
 
@@ -77,20 +94,39 @@ public class UIManager : MonoBehaviour
         {
             if (i < players.Length)
             {
+                leaderboardItems[i].leaderboardItem.SetActive(true);
                 leaderboardItems[i].nameText.text = players[i].Value.Name ?? "Unknown Player";
                 leaderboardItems[i].scoreText.text = players[i].Value.Score.ToString();
+                
+                if (players[i].Value == localPlayer)
+                {
+                    leaderboardItems[i].scoreText.color = Color.yellow; // Highlight local player's score
+                }
+                else
+                {
+                    leaderboardItems[i].scoreText.color = Color.white;
+                }
+                Debug.Log($"Comparing: {players[i].Value.Name} == {localPlayer.Name}");
             }
             else
             {
+                leaderboardItems[i].leaderboardItem.SetActive(false);
                 leaderboardItems[i].nameText.text = "";
                 leaderboardItems[i].scoreText.text = "";
             }
         }
     }
     
+    private Player FindLocalPlayer()
+    {
+        // Implement the logic to find the local player (based on your setup)
+        return FindObjectOfType<Player>(); // This is a placeholder
+    }
+    
     [Serializable]
     private struct LeaderboardItem
     {
+        public GameObject leaderboardItem;
         public TMP_Text nameText;
         public TMP_Text scoreText;
     }

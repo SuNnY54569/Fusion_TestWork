@@ -14,7 +14,7 @@ public class Player : NetworkBehaviour
     [SerializeField] private float jumpImpulse = 10f;
     public LayerMask collisionTestMask;
 
-    public int Score;
+    [Networked] public int Score { get; private set; }
     public bool IsReady;
     
     [Networked] public string Name { get; private set; }
@@ -36,7 +36,7 @@ public class Player : NetworkBehaviour
 
             inputManager = Runner.GetComponent<InputManager>();
             inputManager.LocalPlayer = this;
-            Name = PlayerPrefs.GetString("Photon.Menu.UserName");
+            Name = PlayerPrefs.GetString("PlayerName");
             RPC_PlayerName(Name);
             CameraFollow.Singleton.SetTarget(camTarget);
             kcc.Settings.ForcePredictedLookRotation = true;
@@ -130,5 +130,6 @@ public class Player : NetworkBehaviour
     public void RPC_Reward(int scoreValue)
     {
         Score += scoreValue;
+        UIManager.Singleton.UpdatePlayerScore(Score);
     }
 }

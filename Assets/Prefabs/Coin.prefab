@@ -70,6 +70,7 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: 
   scoreValue: 1
+  rotationSpeed: 360
   _Collected:
     _value: 0
 --- !u!114 &3149927650859440280

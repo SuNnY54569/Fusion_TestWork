@@ -9,14 +9,30 @@ public class CoinSpawner : NetworkBehaviour
     [SerializeField] private float spawnInterval = 5f;
     [SerializeField] private Vector3 spawnAreaMin;
     [SerializeField] private Vector3 spawnAreaMax;
+    [SerializeField] private int maxCoinsOnMap = 10;
+    [SerializeField] private int currentCoinCount = 0;
     
     private bool isSpawning = false;
+    private Coroutine spawnCoroutine;
 
     public void StartSpawning()
     {
         if (isSpawning) return;
         isSpawning = true;
-        StartCoroutine(SpawnCoinsPeriodically());
+
+        // Start by spawning enough coins to reach the maximum limit
+        SpawnCoinsToMax();
+
+        spawnCoroutine = StartCoroutine(SpawnCoinsPeriodically());
+    }
+    
+    private void SpawnCoinsToMax()
+    {
+        // Spawn coins to fill the map up to maxCoinsOnMap
+        while (currentCoinCount < maxCoinsOnMap)
+        {
+            SpawnCoin();
+        }
     }
 
     private IEnumerator SpawnCoinsPeriodically()
@@ -24,7 +40,12 @@ public class CoinSpawner : NetworkBehaviour
         while (isSpawning)
         {
             yield return new WaitForSeconds(spawnInterval);
-            SpawnCoin();
+
+            // Only spawn if there are fewer than the max allowed coins
+            if (currentCoinCount < maxCoinsOnMap)
+            {
+                SpawnCoin();
+            }
         }
     }
 
@@ -34,12 +55,14 @@ public class CoinSpawner : NetworkBehaviour
 
         Vector3 randomPosition = GetRandomPositionInArea();
         NetworkObject spawnedCoin = Runner.Spawn(coinPrefab, randomPosition, Quaternion.identity);
-        
-        // Ensure synchronization by attaching a NetworkTransform if not already present
+
+        // Ensure the coin has a NetworkTransform to synchronize its position
         if (!spawnedCoin.TryGetComponent(out NetworkTransform _))
         {
             spawnedCoin.gameObject.AddComponent<NetworkTransform>();
         }
+        
+        currentCoinCount++;
     }
 
     private Vector3 GetRandomPositionInArea()
@@ -53,6 +76,18 @@ public class CoinSpawner : NetworkBehaviour
 
     public void StopSpawning()
     {
+        if (!isSpawning) return;
+
         isSpawning = false;
+        if (spawnCoroutine != null)
+        {
+            StopCoroutine(spawnCoroutine);
+            spawnCoroutine = null;
+        }
+    }
+    
+    public void OnCoinCollected()
+    {
+        currentCoinCount--;
     }
 }
