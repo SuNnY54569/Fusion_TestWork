@@ -15,6 +15,16 @@ public class Bullet : NetworkBehaviour
     [Header("Collision Settings")]
     [Tooltip("LayerMask for obstacles the bullet can collide with.")]
     [SerializeField] private LayerMask obstacleLayer;
+    
+    [Tooltip("Time before the bullet despawns if it doesn't hit anything.")]
+    [SerializeField] private float despawnTime = 5f;
+    
+    private float timer;
+
+    public override void Spawned()
+    {
+        timer = despawnTime;
+    }
 
     public void Initialize(PlayerRef shooterRef, float bulletSpeed)
     {
@@ -25,6 +35,13 @@ public class Bullet : NetworkBehaviour
     public override void FixedUpdateNetwork()
     {
         transform.Translate(Vector3.forward * speed * Runner.DeltaTime);
+        timer -= Runner.DeltaTime;
+        
+        if (timer <= 0)
+        {
+            DestroyBullet();
+            Debug.Log("Despawn Bullet");
+        }
     }
 
     private void OnTriggerEnter(Collider other)

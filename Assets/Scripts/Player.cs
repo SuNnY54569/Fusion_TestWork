@@ -1,3 +1,4 @@
+using System;
 using System.Collections;
 using System.Collections.Generic;
 using Fusion;
@@ -28,6 +29,9 @@ public class Player : NetworkBehaviour
 
     [SerializeField, Tooltip("Layer mask used for collision detection.")]
     private LayerMask collisionTestMask;
+    
+    [SerializeField, Tooltip("Layer mask used for Raycast detection.")]
+    private LayerMask raycastLayerMask;
 
     [Header("Player Health")]
     [SerializeField, Tooltip("Maximum health of the player.")]
@@ -231,7 +235,7 @@ public class Player : NetworkBehaviour
     {
         if (!Object.HasStateAuthority)
             return;
-        
+
         if (Score < bulletScoreCost)
         {
             Debug.Log("Not enough score to shoot!");
@@ -240,14 +244,26 @@ public class Player : NetworkBehaviour
 
         // Deduct score for shooting
         Score -= bulletScoreCost;
+        
+        Ray ray = new Ray(camTarget.transform.position, camTarget.transform.forward);
+        RaycastHit hit;
 
-        // Spawn bullet
+        if (Physics.Raycast(ray, out hit))
+        {
+            
+            bulletSpawnPoint.LookAt(hit.point);
+        }
+        else
+        {
+            bulletSpawnPoint.LookAt(camTarget.transform.position + camTarget.transform.forward * 1000);
+        }
+        // Spawn the bullet at the bullet spawn point, looking towards the hit point
         NetworkObject bullet = Runner.Spawn(bulletPrefab, bulletSpawnPoint.position, bulletSpawnPoint.rotation);
         bullet.GetComponent<Bullet>().Initialize(Object.InputAuthority, bulletSpeed);
 
         Debug.Log($"Player {Name} shot a bullet!");
     }
-    
+
     // Handles taking damage, reducing the player's health, and triggering the death process if health reaches zero
     [Rpc(RpcSources.StateAuthority, RpcTargets.StateAuthority)]
     public void RPC_TakeDamage(int damage)
@@ -259,6 +275,25 @@ public class Player : NetworkBehaviour
             GameManager.Instance.HandlePlayerDeath(this);
             Health = maxHealth;
             Debug.Log($"{Name} has been eliminated!");
+        }
+    }
+
+    private void OnDrawGizmos()
+    {
+        // Draw the ray from the camera to where it hits (or max distance if no hit)
+        Ray ray = new Ray(camTarget.transform.position, camTarget.transform.forward);
+        RaycastHit hit;
+        Physics.Raycast(ray, out hit, 1000);
+
+        // Gizmo to visualize the camera ray
+        Gizmos.color = Color.red;
+        Gizmos.DrawLine(camTarget.transform.position, hit.point); // Ray from camera to hit point or max distance
+
+        // If the bullet spawn point is available, visualize its forward direction
+        if (bulletSpawnPoint != null)
+        {
+            Gizmos.color = Color.green;
+            Gizmos.DrawLine(bulletSpawnPoint.position, bulletSpawnPoint.position + bulletSpawnPoint.forward * 10); // Forward direction of bullet spawn
         }
     }
 }
