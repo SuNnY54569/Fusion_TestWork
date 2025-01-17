@@ -92,11 +92,31 @@ public class CoinSpawner : NetworkBehaviour
 
     private Vector3 GetRandomPositionInArea()
     {
-        float x = Random.Range(spawnAreaMin.x, spawnAreaMax.x);
-        float y = Random.Range(spawnAreaMin.y, spawnAreaMax.y);
-        float z = Random.Range(spawnAreaMin.z, spawnAreaMax.z);
+        Vector3 spawnPosition = Vector3.zero;
+        bool validPosition = false;
+        
+        for (int attempt = 0; attempt < 10; attempt++)
+        {
+            float x = Random.Range(spawnAreaMin.x, spawnAreaMax.x);
+            float y = Random.Range(spawnAreaMin.y, spawnAreaMax.y);
+            float z = Random.Range(spawnAreaMin.z, spawnAreaMax.z);
 
-        return new Vector3(x, y, z);
+            spawnPosition = new Vector3(x, y, z);
+
+            // Check if the spawn position is free (no colliders in the area)
+            if (!IsPositionOccupied(spawnPosition))
+            {
+                validPosition = true;
+                break; // Exit the loop when a valid position is found
+            }
+        }
+        
+        if (!validPosition)
+        {
+            Debug.LogWarning("Could not find a valid spawn position. Using default position.");
+        }
+
+        return spawnPosition;
     }
 
     public void StopSpawning()
@@ -131,5 +151,26 @@ public class CoinSpawner : NetworkBehaviour
         }
         
         currentCoinCount = 0;
+    }
+    
+    private bool IsPositionOccupied(Vector3 position)
+    {
+        // Use Physics.OverlapSphere or any other suitable method to check for colliders
+        Collider[] colliders = Physics.OverlapSphere(position, 0.5f); // 0.5f is the radius for checking the area
+
+        // If any colliders are found, the position is occupied
+        return colliders.Length > 0;
+    }
+    
+    private void OnDrawGizmos()
+    {
+        // Set the color of the gizmo (change it as you like)
+        Gizmos.color = new Color(0f, 1f, 0f, 0.3f); // Green with transparency
+
+        // Draw the wireframe cube to represent the spawn area
+        Vector3 size = spawnAreaMax - spawnAreaMin;
+        Vector3 center = (spawnAreaMin + spawnAreaMax) / 2;
+
+        Gizmos.DrawWireCube(center, size);
     }
 }

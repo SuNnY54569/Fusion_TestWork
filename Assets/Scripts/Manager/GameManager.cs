@@ -38,7 +38,9 @@ public class GameManager : NetworkBehaviour, IPlayerJoined, IPlayerLeft
     [Networked, OnChangedRender(nameof(GameStateChanged))] public GameState State { get; set; }
     [Networked] private NetworkDictionary<PlayerRef, Player> Players => default;
 
-    public bool reachMinimumPlayer = false;
+    [Networked] public bool reachMinimumPlayer { get; set; }
+
+    private InputManager inputManager;
 
     public override void Spawned()
     {
@@ -46,7 +48,11 @@ public class GameManager : NetworkBehaviour, IPlayerJoined, IPlayerLeft
         CountdownTimer = countdownDuration;
         Winner = null;
         State = GameState.Waiting;
-        UIManager.Instance?.SetUI(State, Winner);
+        
+        int readyCount = Players.Count(p => p.Value.IsReady);
+        int totalPlayers = Players.Count;
+        
+        UIManager.Instance?.SetUI(State, Winner, readyCount, totalPlayers);
         Runner.SetIsSimulated(Object, true);
     }
     
@@ -60,6 +66,8 @@ public class GameManager : NetworkBehaviour, IPlayerJoined, IPlayerLeft
         {
             Destroy(gameObject);
         }
+
+        inputManager = FindObjectOfType<InputManager>();
     }
 
     public override void FixedUpdateNetwork()
@@ -107,8 +115,20 @@ public class GameManager : NetworkBehaviour, IPlayerJoined, IPlayerLeft
             reachMinimumPlayer = false;
             return;
         }
-
-        reachMinimumPlayer = true;
+        else
+        {
+            int readyCount = Players.Count(p => p.Value.IsReady);
+            int totalPlayers = Players.Count;
+            
+            reachMinimumPlayer = true;
+            UIManager.Instance.SetUI(State, Winner, readyCount, totalPlayers);
+            
+            if (HasInputAuthority && inputManager.LocalPlayer.IsReady)
+            {
+                UIManager.Instance.DidSetReady();
+            }
+        }
+        
         // Check if all players are ready
         bool areAllReady = Players.All(p => p.Value.IsReady);
 
@@ -158,20 +178,36 @@ public class GameManager : NetworkBehaviour, IPlayerJoined, IPlayerLeft
         GameStateChanged();
         UnreadyAll();
         Timer = gameDuration;
+        foreach (var player in Players)
+        {
+            player.Value.Score = 0;        // Reset score
+        }
     }
 
     private void GameStateChanged()
     {
-        UIManager.Instance.SetUI(State, Winner);
+        int readyCount = Players.Count(p => p.Value.IsReady);
+        int totalPlayers = Players.Count;
+        
+        UIManager.Instance.SetUI(State, Winner, readyCount, totalPlayers);
     }
 
     private void PreparePlayers()
     {
-        float spacingAngle = 360f / Players.Count;
-        spawnpointPivot.rotation = Quaternion.Euler(0f, Random.Range(0f, 360f), 0f);
+        float radius = Vector3.Distance(spawnpoint.position, spawnpointPivot.position);
+
+        spawnpointPivot.rotation = Quaternion.Euler(0f, 0f, 0f); // Random starting rotation
+
         foreach (KeyValuePair<PlayerRef, Player> player in Players)
         {
-            GetNextSpawnPoint(spacingAngle, out Vector3 position, out Quaternion rotation);
+            float randomAngle = Random.Range(0f, 360f) * Mathf.Deg2Rad;
+            Vector3 position = spawnpointPivot.position + new Vector3(
+                Mathf.Cos(randomAngle), 
+                0, 
+                Mathf.Sin(randomAngle)
+            ) * radius;
+            Quaternion rotation = Quaternion.LookRotation(spawnpointPivot.position - position);
+            
             player.Value.Teleport(position, rotation);
         }
     }
@@ -235,9 +271,20 @@ public class GameManager : NetworkBehaviour, IPlayerJoined, IPlayerLeft
 
         // Deduct player's score
         float lostCoinRatio = Random.Range(minLostCoinRatio, maxLostCoinRatio);
-        int lostScore = Mathf.CeilToInt(player.Score * lostCoinRatio / 5f) * 5;
+        int lostScore = Mathf.Max(5, Mathf.CeilToInt(player.Score * lostCoinRatio / 5f) * 5);
         player.Score -= lostScore;
-        Vector3 randomOffset = new Vector3(Random.Range(-3f, 3f), 1f, Random.Range(-3f, 3f));
+        
+        if (coinSpawner == null)
+        {
+            Debug.LogError("CoinSpawner is not assigned!");
+            return;
+        }
+        
+        Vector3 randomOffset = new Vector3(
+            Random.Range(-3f, 3f), 
+            1f, 
+            Random.Range(-3f, 3f)
+        );
         Vector3 spawnPosition = player.transform.position + randomOffset;
 
         if (lostScore > 0)
@@ -245,12 +292,50 @@ public class GameManager : NetworkBehaviour, IPlayerJoined, IPlayerLeft
             coinSpawner.SpawnCoin(spawnPosition, lostScore, false);
         }
 
-        // Teleport player back to spawn point
-        float spacingAngle = 360f / Players.Count;
-        spawnpointPivot.rotation = Quaternion.Euler(0f, Random.Range(0f, 360f), 0f);
-        GetNextSpawnPoint(spacingAngle, out Vector3 position, out Quaternion rotation);
-        player.Teleport(position, rotation);
+        float radius = Vector3.Distance(spawnpoint.position, spawnpointPivot.position);
+        float randomAngle = Random.Range(0f, 360f) * Mathf.Deg2Rad;
+        Vector3 position = spawnpointPivot.position + new Vector3(
+            Mathf.Cos(randomAngle), 
+            0, 
+            Mathf.Sin(randomAngle)
+        ) * radius;
+        Quaternion rotation = Quaternion.LookRotation(spawnpointPivot.position - position);
 
-        Debug.Log($"{player.name} died, lost {lostScore} score, and respawned at {position}.");
+        player.Teleport(position, rotation);
+    }
+    
+    private void OnDrawGizmos()
+    {
+        if (spawnpointPivot == null || spawnpoint == null) return;
+
+        Gizmos.color = Color.green;
+
+        // Draw the spawn circle
+        float radius = Vector3.Distance(spawnpoint.position, spawnpointPivot.position);
+        DrawWireCircle(spawnpointPivot.position, radius);
+
+        // Draw lines to potential spawn points
+        
+        float angleStep = 360f / 10;
+        for (int i = 0; i < 10; i++)
+        {
+            float angle = angleStep * i * Mathf.Deg2Rad;
+            Vector3 spawnPosition = spawnpointPivot.position + new Vector3(Mathf.Cos(angle), 0, Mathf.Sin(angle)) * radius;
+            Gizmos.DrawLine(spawnpointPivot.position, spawnPosition);
+        }
+        
+    }
+
+    private void DrawWireCircle(Vector3 center, float radius, int segments = 36)
+    {
+        float angleStep = 360f / segments;
+        Vector3 prevPoint = center + new Vector3(radius, 0, 0);
+        for (int i = 1; i <= segments; i++)
+        {
+            float angle = angleStep * i * Mathf.Deg2Rad;
+            Vector3 newPoint = center + new Vector3(Mathf.Cos(angle) * radius, 0, Mathf.Sin(angle) * radius);
+            Gizmos.DrawLine(prevPoint, newPoint);
+            prevPoint = newPoint;
+        }
     }
 }

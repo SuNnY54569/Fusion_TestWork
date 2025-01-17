@@ -20,8 +20,8 @@ public class UIManager : MonoBehaviour
     [SerializeField] private GameManager gameManager;
     [SerializeField] private GameObject menuButton;
     [SerializeField] private LeaderboardItem[] leaderboardItems;
-    
-    private Player localPlayer;
+
+    private InputManager inputManager;
     
     private void Awake()
     {
@@ -33,6 +33,8 @@ public class UIManager : MonoBehaviour
         {
             Destroy(gameObject);
         }
+
+        inputManager = FindObjectOfType<InputManager>();
     }
 
     private void OnDestroy()
@@ -41,11 +43,6 @@ public class UIManager : MonoBehaviour
         {
             Instance = null;
         }
-    }
-
-    public void GetLocalPlayer(Player player)
-    {
-        localPlayer = player;
     }
     
     public void UpdatePlayerScore(int newScore)
@@ -83,30 +80,30 @@ public class UIManager : MonoBehaviour
         instructionText.text = "Waiting for other players to be ready";
     }
 
-    public void SetUI(GameState newState, Player winner)
+    public void SetUI(GameState newState, Player winner, int readyCount, int totalPlayers)
     {
-        if (newState == GameState.Waiting)
-        {
-            if (winner == null)
-            {
-                gameStateText.text = "Waiting to Start";
-                instructionText.text = "Press R when you are ready";
-            }
-            else
-            {
-                gameStateText.text = $"{winner.Name} Wins";
-                instructionText.text = "Press R when you're Ready to play again";
-            }
-            
-        }
-
         menuButton.SetActive(newState == GameState.Waiting);
         leaderBoard.SetActive(newState == GameState.Playing);
+        playerHealthText.enabled = newState == GameState.Playing;
         playerScoreText.enabled = newState == GameState.Playing;
         timerText.enabled = newState == GameState.Playing;
         gameStateText.enabled = newState == GameState.Waiting;
         instructionText.enabled = newState == GameState.Waiting;
         countdownText.enabled = newState == GameState.Countdown;
+        
+        if (newState == GameState.Waiting)
+        {
+            if (winner == null)
+            {
+                gameStateText.text = "Waiting to Start";
+                instructionText.text = $"Press R when you are ready ({readyCount}/{totalPlayers} ready)";
+            }
+            else
+            {
+                gameStateText.text = $"{winner.Name} Wins";
+                instructionText.text = $"Press R when you're Ready to play again ({readyCount}/{totalPlayers} ready)";
+            }
+        }
     }
 
     public void UpdateLeaderBoard(KeyValuePair<Fusion.PlayerRef, Player>[] players)
@@ -119,7 +116,7 @@ public class UIManager : MonoBehaviour
                 leaderboardItems[i].nameText.text = players[i].Value.Name ?? "Unknown Player";
                 leaderboardItems[i].scoreText.text = players[i].Value.Score.ToString();
                 
-                if (players[i].Value == localPlayer)
+                if (players[i].Value == inputManager.LocalPlayer)
                 {
                     leaderboardItems[i].nameText.color = Color.yellow;
                     leaderboardItems[i].scoreText.color = Color.yellow; // Highlight local player's score

@@ -50,7 +50,6 @@ public class Player : NetworkBehaviour
             RPC_PlayerName(Name);
             CameraFollow.Singleton.SetTarget(camTarget);
             kcc.Settings.ForcePredictedLookRotation = true;
-            UIManager.Instance.GetLocalPlayer(this);
             Health = maxHealth;
         }
     }

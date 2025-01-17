@@ -8,6 +8,8 @@ public class Bullet : NetworkBehaviour
     public PlayerRef shooter;
     private int damage;
     private float speed;
+    
+    [SerializeField] private LayerMask obstacleLayer;
 
     public void Initialize(PlayerRef shooterRef, int bulletDamage, float bulletSpeed)
     {
@@ -21,6 +23,20 @@ public class Bullet : NetworkBehaviour
         transform.Translate(Vector3.forward * speed * Runner.DeltaTime);
     }
 
+    private void OnTriggerEnter(Collider other)
+    {
+        if (IsInLayerMask(other.gameObject.layer, obstacleLayer))
+        {
+            Debug.Log("Bullet hit an obstacle!");
+            DestroyBullet();
+        }
+    }
+    
+    private bool IsInLayerMask(int layer, LayerMask layerMask)
+    {
+        return ((1 << layer) & layerMask) != 0;
+    }
+    
     public void DestroyBullet()
     {
         Runner.Despawn(Object);
