@@ -6,12 +6,28 @@ using UnityEngine;
 
 public class UIManager : MonoBehaviour
 {
+    #region Singleton
+
+    public static UIManager Instance;
+    
+    private void Awake()
+    {
+        if (Instance == null)
+        {
+            Instance = this;
+        }
+        else
+        {
+            Destroy(gameObject);
+        }
+
+        inputManager = FindObjectOfType<InputManager>();
+    }
+
+    #endregion
+    
     #region Variables
     
-    public static UIManager Instance;
-
-    private static UIManager _singleton;
-
     [Header("UI Elements")]
     [Tooltip("The leaderboard UI object.")]
     [SerializeField] private GameObject leaderBoard;
@@ -50,27 +66,7 @@ public class UIManager : MonoBehaviour
     
     #endregion
     
-    private void Awake()
-    {
-        if (Instance == null)
-        {
-            Instance = this;
-        }
-        else
-        {
-            Destroy(gameObject);
-        }
-
-        inputManager = FindObjectOfType<InputManager>();
-    }
-
-    private void OnDestroy()
-    {
-        if (Instance == this)
-        {
-            Instance = null;
-        }
-    }
+    #region UI Updates
     
     //Update the player's score in the UI.
     public void UpdatePlayerScore(int newScore)
@@ -96,6 +92,17 @@ public class UIManager : MonoBehaviour
         {
             Debug.LogError("playerHealthText is null!");
         }
+    }
+    
+    public void UpdateCountdown(float countdownTimer)
+    {
+        countdownText.text = Mathf.CeilToInt(countdownTimer).ToString();
+    }
+    
+    public void UpdateTimer(float timeLeft)
+    {
+        string formattedTime = $"{Mathf.FloorToInt(timeLeft / 60):00}:{Mathf.FloorToInt(timeLeft % 60):00}";
+        timerText.text = formattedTime;
     }
 
     // Update the UI when there are not enough players to start the game.
@@ -170,22 +177,18 @@ public class UIManager : MonoBehaviour
         }
     }
     
-    public void UpdateCountdown(float countdownTimer)
-    {
-        countdownText.text = Mathf.CeilToInt(countdownTimer).ToString();
-    }
+    #endregion
     
-    public void UpdateTimer(float timeLeft)
-    {
-        // Display the timer in MM:SS format
-        string formattedTime = $"{Mathf.FloorToInt(timeLeft / 60):00}:{Mathf.FloorToInt(timeLeft % 60):00}";
-        timerText.text = formattedTime; // Assuming you have a Text or TMP_Text called timerText
-    }
+    #region Button Events
     
     public void OnExitButtonClick()
     {
         gameManager.ExitRoom();
     }
+    
+    #endregion
+    
+    #region Structs
     
     [Serializable]
     private struct LeaderboardItem
@@ -194,4 +197,6 @@ public class UIManager : MonoBehaviour
         public TMP_Text nameText;
         public TMP_Text scoreText;
     }
+    
+    #endregion
 }
