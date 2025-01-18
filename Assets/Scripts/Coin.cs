@@ -5,8 +5,6 @@ using UnityEngine;
 
 public class Coin : NetworkBehaviour
 {
-    #region Variables
-    
     [Header("Coin Settings")]
     [Tooltip("The score value this coin will give when picked up.")]
     [SerializeField] private int scoreValue = 10;
@@ -24,7 +22,11 @@ public class Coin : NetworkBehaviour
 
     public bool CanPickUp => !Collected;
     
-    #endregion
+    // Local method called when the player attempts to pick up the coin.
+    public void OnPickUpLocal(Player player)
+    {
+        RPC_Collect(player);
+    }
 
     public override void FixedUpdateNetwork()
     {
@@ -54,11 +56,5 @@ public class Coin : NetworkBehaviour
     public void SetCoinValue(int value)
     {
         scoreValue = value;
-    }
-    
-    // Local method called when the player attempts to pick up the coin.
-    public void OnPickUpLocal(Player player)
-    {
-        RPC_Collect(player);
     }
 }

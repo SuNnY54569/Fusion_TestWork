@@ -9,16 +9,12 @@ using UnityEngine;
 using UnityEngine.SceneManagement;
 using Random = UnityEngine.Random;
 
-#region Enums
-
 public enum GameState
 {
     Waiting,
     Countdown,
     Playing,
 }
-
-#endregion
 
 public class GameManager : NetworkBehaviour, IPlayerJoined, IPlayerLeft
 {
@@ -58,9 +54,6 @@ public class GameManager : NetworkBehaviour, IPlayerJoined, IPlayerLeft
 
     [Tooltip("Minimum number of players required to start the game.")]
     public int minimumPlayers = 2;
-    
-    private InputManager inputManager;
-    
     #endregion
 
     #region Networked Variables
@@ -72,8 +65,8 @@ public class GameManager : NetworkBehaviour, IPlayerJoined, IPlayerLeft
     [Networked] private NetworkDictionary<PlayerRef, Player> Players => default;
     [Networked] public bool reachMinimumPlayer { get; set; }
     #endregion
-    
-    #region Callbacks
+
+    private InputManager inputManager;
 
     public override void Spawned()
     {
@@ -136,10 +129,6 @@ public class GameManager : NetworkBehaviour, IPlayerJoined, IPlayerLeft
             }
         }
     }
-    
-    #endregion
-    
-    #region Game Logic
     
     // Handle game logic during the waiting state (before game starts)
     private void HandleWaitingState()
@@ -217,11 +206,12 @@ public class GameManager : NetworkBehaviour, IPlayerJoined, IPlayerLeft
             player.Value.Score = 0;        // Reset score
         }
     }
-    
-    #endregion
 
-    #region Player Management
-    
+    private void GameStateChanged()
+    {
+        UIManager.Instance.SetUI(State, Winner);
+    }
+
     // Prepare players by assigning them random spawn positions
     private void PreparePlayers()
     {
@@ -250,6 +240,14 @@ public class GameManager : NetworkBehaviour, IPlayerJoined, IPlayerLeft
             player.Value.IsReady = false;
         }
     }
+
+    // Get the next spawn point for players with a specified angle
+    private void GetNextSpawnPoint(float spacingAngle, out Vector3 position, out Quaternion rotation)
+    {
+        position = spawnpoint.position;
+        rotation = spawnpoint.rotation;
+        spawnpointPivot.Rotate(0f, spacingAngle, 0f);
+    }
     
     public void PlayerJoined(PlayerRef player)
     {
@@ -274,9 +272,19 @@ public class GameManager : NetworkBehaviour, IPlayerJoined, IPlayerLeft
         }
     }
     
-    #endregion
-    
-    #region Coin and Death Handling
+    public void ExitRoom()
+    {
+        if (Runner != null)
+        {
+            Debug.Log("Player exiting the room...");
+
+            // Shut down the runner session (this will trigger OnShutdown for clients)
+            Runner.Shutdown();
+        }
+
+        // Load the menu scene
+        SceneManager.LoadScene(menuSceneName);
+    }
     
     // Method to handle player death and deduct score, spawn coins, and teleport player
     public void HandlePlayerDeath(Player player)
@@ -325,41 +333,6 @@ public class GameManager : NetworkBehaviour, IPlayerJoined, IPlayerLeft
         player.Teleport(position, rotation);
     }
     
-    #endregion
-    
-    #region Utility Methods
-    
-    private void GameStateChanged()
-    {
-        UIManager.Instance.SetUI(State, Winner);
-    }
-
-    // Get the next spawn point for players with a specified angle
-    private void GetNextSpawnPoint(float spacingAngle, out Vector3 position, out Quaternion rotation)
-    {
-        position = spawnpoint.position;
-        rotation = spawnpoint.rotation;
-        spawnpointPivot.Rotate(0f, spacingAngle, 0f);
-    }
-    
-    public void ExitRoom()
-    {
-        if (Runner != null)
-        {
-            Debug.Log("Player exiting the room...");
-
-            // Shut down the runner session (this will trigger OnShutdown for clients)
-            Runner.Shutdown();
-        }
-
-        // Load the menu scene
-        SceneManager.LoadScene(menuSceneName);
-    }
-    
-    #endregion
-
-    #region Debug
-
     private void OnDrawGizmos()
     {
         if (spawnpointPivot == null || spawnpoint == null) return;
@@ -394,7 +367,4 @@ public class GameManager : NetworkBehaviour, IPlayerJoined, IPlayerLeft
             prevPoint = newPoint;
         }
     }
-
-    #endregion
-    
 }

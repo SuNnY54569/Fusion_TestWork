@@ -5,8 +5,6 @@ using UnityEngine;
 
 public class Bullet : NetworkBehaviour
 {
-    #region Variables
-    
     [Header("Bullet Settings")]
     [Tooltip("The player who shot the bullet.")]
     public PlayerRef shooter;
@@ -22,16 +20,18 @@ public class Bullet : NetworkBehaviour
     [SerializeField] private float despawnTime = 5f;
     
     private float timer;
-    
-    #endregion
-    
-    #region Network Callbacks
 
     public override void Spawned()
     {
         timer = despawnTime;
     }
-    
+
+    public void Initialize(PlayerRef shooterRef, float bulletSpeed)
+    {
+        shooter = shooterRef;
+        speed = bulletSpeed;
+    }
+
     public override void FixedUpdateNetwork()
     {
         transform.Translate(Vector3.forward * speed * Runner.DeltaTime);
@@ -43,10 +43,6 @@ public class Bullet : NetworkBehaviour
             Debug.Log("Despawn Bullet");
         }
     }
-    
-    #endregion
-    
-    #region Collision Handling
 
     private void OnTriggerEnter(Collider other)
     {
@@ -62,20 +58,8 @@ public class Bullet : NetworkBehaviour
         return ((1 << layer) & layerMask) != 0;
     }
     
-    #endregion
-    
-    #region Utility Methods
-    
     public void DestroyBullet()
     {
         Runner.Despawn(Object);
     }
-    
-    public void Initialize(PlayerRef shooterRef, float bulletSpeed)
-    {
-        shooter = shooterRef;
-        speed = bulletSpeed;
-    }
-    
-    #endregion
 }
