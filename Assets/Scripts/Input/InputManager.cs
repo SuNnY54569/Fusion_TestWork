@@ -10,6 +10,8 @@ using UnityEngine.SceneManagement;
 
 public class InputManager : SimulationBehaviour, IBeforeUpdate, INetworkRunnerCallbacks
 {
+    #region Variables
+    
     [Header("Player Settings")]
     [Tooltip("The local player in the game.")]
     public Player LocalPlayer;
@@ -20,6 +22,8 @@ public class InputManager : SimulationBehaviour, IBeforeUpdate, INetworkRunnerCa
     private NetInput accumulatedInput; // Stores the accumulated input for the current frame
     private Vector2Accumulator mouseDeltaAccumulator = new() { SmoothingWindow = 0.025f }; // Accumulates mouse delta for smoothing
     private bool resetInput; // Flag to reset input after processing
+    
+    #endregion
     
     public void BeforeUpdate()
     {

@@ -38,6 +38,8 @@ public class CoinSpawner : NetworkBehaviour
     private List<NetworkObject> spawnedCoins = new List<NetworkObject>();
     
     #endregion
+    
+    #region Coin Spawning Logic
 
     //Starts the coin spawning process
     public void StartSpawning()
@@ -72,6 +74,22 @@ public class CoinSpawner : NetworkBehaviour
             }
         }
     }
+    
+    public void StopSpawning()
+    {
+        if (!isSpawning) return;
+
+        isSpawning = false;
+        if (spawnCoroutine != null)
+        {
+            StopCoroutine(spawnCoroutine);
+            spawnCoroutine = null;
+        }
+    }
+    
+    #endregion
+    
+    #region Coin Management
 
     //Spawns a single coin at a specified position.
     public void SpawnCoin(Vector3 position, int value, bool countCoin = true)
@@ -110,6 +128,33 @@ public class CoinSpawner : NetworkBehaviour
             currentCoinCount++;
         }
     }
+    
+    //Removes all spawned coins from the game.
+    public void RemoveAllCoins()
+    {
+        if (!Runner.IsServer) return;
+
+        for (int i = spawnedCoins.Count - 1; i >= 0; i--)
+        {
+            NetworkObject coin = spawnedCoins[i];
+            if (coin != null && coin.IsValid)
+            {
+                Runner.Despawn(coin);
+            }
+            spawnedCoins.RemoveAt(i);
+        }
+        
+        currentCoinCount = 0;
+    }
+    
+    public void OnCoinCollected()
+    {
+        currentCoinCount--;
+    }
+    
+    #endregion
+    
+    #region Utility Methods
 
     //Generates a random position within the defined spawn area that is not occupied.
     private Vector3 GetRandomPositionInArea()
@@ -139,41 +184,6 @@ public class CoinSpawner : NetworkBehaviour
 
         return spawnPosition;
     }
-
-    public void StopSpawning()
-    {
-        if (!isSpawning) return;
-
-        isSpawning = false;
-        if (spawnCoroutine != null)
-        {
-            StopCoroutine(spawnCoroutine);
-            spawnCoroutine = null;
-        }
-    }
-    
-    public void OnCoinCollected()
-    {
-        currentCoinCount--;
-    }
-    
-    //Removes all spawned coins from the game.
-    public void RemoveAllCoins()
-    {
-        if (!Runner.IsServer) return;
-
-        for (int i = spawnedCoins.Count - 1; i >= 0; i--)
-        {
-            NetworkObject coin = spawnedCoins[i];
-            if (coin != null && coin.IsValid)
-            {
-                Runner.Despawn(coin);
-            }
-            spawnedCoins.RemoveAt(i);
-        }
-        
-        currentCoinCount = 0;
-    }
     
     //Checks if a given position is already occupied by a collider.
     private bool IsPositionOccupied(Vector3 position)
@@ -182,6 +192,10 @@ public class CoinSpawner : NetworkBehaviour
         
         return colliders.Length > 0;
     }
+    
+    #endregion
+    
+    #region Debugging
     
     private void OnDrawGizmos()
     {
@@ -192,4 +206,6 @@ public class CoinSpawner : NetworkBehaviour
 
         Gizmos.DrawWireCube(center, size);
     }
+    
+    #endregion
 }

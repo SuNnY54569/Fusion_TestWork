@@ -7,6 +7,8 @@ using UnityEngine;
 
 public class Player : NetworkBehaviour
 {
+    #region Variable
+    
     [Header("Player Model Settings")]
     [SerializeField, Tooltip("Array of mesh renderers for the player model parts.")]
     private MeshRenderer[] modelParts;
@@ -78,7 +80,9 @@ public class Player : NetworkBehaviour
     private Vector2 baseLookRotation;
     Collider[] collisionTestColliders = new Collider[8];
     
+    #endregion
     
+    #region Network Callbacks
     public override void Spawned()
     {
         kcc.SetGravity(Physics.gravity.y * 2f);
@@ -104,74 +108,13 @@ public class Player : NetworkBehaviour
     {
         if (GetInput(out NetInput input))
         {
-            kcc.AddLookRotation(input.LookDelta * lookSensitivity);
-            UpdateCamTarget();
-            Vector3 worldDirection = kcc.TransformRotation * new Vector3(input.Direction.x, 0f, input.Direction.y);
-            float jump = 0f;
-
-            // Handle jump action
-            if (input.Buttons.WasPressed(PreviousButtons, InputButton.Jump) && kcc.IsGrounded)
-            {
-                jump = jumpImpulse;
-            }
-            
-            // Handle shooting action
-            if (input.Buttons.WasPressed(PreviousButtons, InputButton.Fire) && HasInputAuthority)
-            {
-                if (Runner.Tick - lastShotTick >= shootCooldown)
-                {
-                    RPC_Shoot(); // Call the Shoot RPC method to shoot a bullet
-                    lastShotTick = Runner.Tick;
-                }
-                else
-                {
-                    Debug.Log("Shooting is on cooldown!");
-                }
-            }
-            
-            kcc.Move(worldDirection.normalized * speed, jump);
-            PreviousButtons = input.Buttons;
-            baseLookRotation = kcc.GetLookRotation();
+            HandleMovement(input);
+            HandleShooting(input);
         }
         
-        // Detect if any objects (such as coins or bullets) are within range
-        int objectInRange = Runner.GetPhysicsScene().OverlapCapsule(transform.position,
-            transform.position + Vector3.up * 2, 1f, collisionTestColliders, collisionTestMask, QueryTriggerInteraction.Collide);
-        for (int i = 0; i < objectInRange; i++)
-        {
-            var pickUpObject = collisionTestColliders[i].GetComponent<Coin>();
-            if (pickUpObject != null)
-            {
-                CollectObject(pickUpObject); // Collect the coin if it's within range
-                Debug.Log("Collect Object");
-            }
-
-            var bulletObject = collisionTestColliders[i].GetComponent<Bullet>();
-            if (bulletObject != null && Object.InputAuthority != bulletObject.shooter)
-            {
-                if (Object.HasStateAuthority)
-                {
-                    RPC_TakeDamage(bulletDamage); // Take damage if the bullet hits the player
-                }
-                bulletObject.DestroyBullet();
-            }
-        }
+        DetectNearbyObjects();
     }
     
-    // Handles collecting a coin if the conditions are met
-    private bool CollectObject(Coin pickUp)
-    {
-        if (pickUp == null || pickUp.Object?.IsValid != true)
-            return false;
-
-        if (pickUp.CanPickUp)
-        {
-            pickUp.OnPickUpLocal(this);
-        }
-
-        return true;
-    }
-
     public override void Render()
     {
         if (kcc.Settings.ForcePredictedLookRotation && HasInputAuthority)
@@ -188,45 +131,52 @@ public class Player : NetworkBehaviour
             UIManager.Instance.UpdatePlayerHealth(Health);
         }
     }
+    
+    #endregion
+    
+    #region Movement and Camera
+    
+    private void HandleMovement(NetInput input)
+    {
+        kcc.AddLookRotation(input.LookDelta * lookSensitivity);
+        UpdateCamTarget();
+        Vector3 worldDirection = kcc.TransformRotation * new Vector3(input.Direction.x, 0f, input.Direction.y);
+        float jump = 0f;
 
+        if (input.Buttons.WasPressed(PreviousButtons, InputButton.Jump) && kcc.IsGrounded)
+        {
+            jump = jumpImpulse;
+        }
+
+        kcc.Move(worldDirection.normalized * speed, jump);
+        PreviousButtons = input.Buttons;
+        baseLookRotation = kcc.GetLookRotation();
+    }
+    
     // Updates the camera target based on the player's look rotation
     private void UpdateCamTarget()
     {
         camTarget.localRotation = Quaternion.Euler(kcc.GetLookRotation().x, 0f, 0f);
     }
-
-    // Sets the player as ready to play, only after a minimum number of players have joined
-    [Rpc(RpcSources.InputAuthority, RpcTargets.InputAuthority | RpcTargets.StateAuthority)]
-    public void RPC_SetReady()
+    
+    #endregion
+    
+    #region Shooting
+    
+    private void HandleShooting(NetInput input)
     {
-        if (!GameManager.Instance.reachMinimumPlayer) { return; }
-        
-        IsReady = true;
-        if (HasInputAuthority)
+        if (input.Buttons.WasPressed(PreviousButtons, InputButton.Fire) && HasInputAuthority)
         {
-            UIManager.Instance.DidSetReady(); // Update the UI to reflect the player is ready
+            if (Runner.Tick - lastShotTick >= shootCooldown)
+            {
+                RPC_Shoot();
+                lastShotTick = Runner.Tick;
+            }
+            else
+            {
+                Debug.Log("Shooting is on cooldown!");
+            }
         }
-    }
-
-    public void Teleport(Vector3 position, Quaternion rotation)
-    {
-        kcc.SetPosition(position);
-        kcc.SetLookRotation(rotation);
-    }
-
-    // Set the player's name across the network
-    [Rpc(RpcSources.InputAuthority, RpcTargets.StateAuthority)]
-    private void RPC_PlayerName(string name)
-    {
-        Name = name;
-    }
-
-    // Rewards the player by adding a score value
-    [Rpc(RpcSources.All, RpcTargets.StateAuthority, Channel = RpcChannel.Reliable)]
-    public void RPC_Reward(int scoreValue)
-    {
-        Score += scoreValue;
-        Debug.Log($"RPC Score Updated: {Score}");
     }
     
     // Handles the shooting action by spawning a bullet, deducting score, and applying the bullet mechanics
@@ -263,7 +213,54 @@ public class Player : NetworkBehaviour
 
         Debug.Log($"Player {Name} shot a bullet!");
     }
+    
+    #endregion
 
+    #region Object Interaction
+    
+    // Detect if any objects (such as coins or bullets) are within range
+    private void DetectNearbyObjects()
+    {
+        int objectInRange = Runner.GetPhysicsScene().OverlapCapsule(transform.position,
+            transform.position + Vector3.up * 2, 1f, collisionTestColliders, collisionTestMask, QueryTriggerInteraction.Collide);
+        for (int i = 0; i < objectInRange; i++)
+        {
+            var pickUpObject = collisionTestColliders[i].GetComponent<Coin>();
+            if (pickUpObject != null)
+            {
+                CollectObject(pickUpObject);
+            }
+
+            var bulletObject = collisionTestColliders[i].GetComponent<Bullet>();
+            if (bulletObject != null && Object.InputAuthority != bulletObject.shooter)
+            {
+                if (Object.HasStateAuthority)
+                {
+                    RPC_TakeDamage(bulletDamage);
+                }
+                bulletObject.DestroyBullet();
+            }
+        }
+    }
+    
+    // Handles collecting a coin if the conditions are met
+    private bool CollectObject(Coin pickUp)
+    {
+        if (pickUp == null || pickUp.Object?.IsValid != true)
+            return false;
+
+        if (pickUp.CanPickUp)
+        {
+            pickUp.OnPickUpLocal(this);
+        }
+
+        return true;
+    }
+    
+    #endregion
+    
+    #region Damage and Health
+    
     // Handles taking damage, reducing the player's health, and triggering the death process if health reaches zero
     [Rpc(RpcSources.StateAuthority, RpcTargets.StateAuthority)]
     public void RPC_TakeDamage(int damage)
@@ -277,4 +274,44 @@ public class Player : NetworkBehaviour
             Debug.Log($"{Name} has been eliminated!");
         }
     }
+    
+    #endregion
+    
+    #region Utility Methods
+    
+    public void Teleport(Vector3 position, Quaternion rotation)
+    {
+        kcc.SetPosition(position);
+        kcc.SetLookRotation(rotation);
+    }
+    
+    // Set the player's name across the network
+    [Rpc(RpcSources.InputAuthority, RpcTargets.StateAuthority)]
+    private void RPC_PlayerName(string name)
+    {
+        Name = name;
+    }
+    
+    // Rewards the player by adding a score value
+    [Rpc(RpcSources.All, RpcTargets.StateAuthority, Channel = RpcChannel.Reliable)]
+    public void RPC_Reward(int scoreValue)
+    {
+        Score += scoreValue;
+        Debug.Log($"RPC Score Updated: {Score}");
+    }
+
+    // Sets the player as ready to play, only after a minimum number of players have joined
+    [Rpc(RpcSources.InputAuthority, RpcTargets.InputAuthority | RpcTargets.StateAuthority)]
+    public void RPC_SetReady()
+    {
+        if (!GameManager.Instance.reachMinimumPlayer) { return; }
+        
+        IsReady = true;
+        if (HasInputAuthority)
+        {
+            UIManager.Instance.DidSetReady(); // Update the UI to reflect the player is ready
+        }
+    }
+    
+    #endregion
 }

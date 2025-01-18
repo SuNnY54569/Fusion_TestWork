@@ -6,12 +6,12 @@ using UnityEngine;
 public class CameraFollow : MonoBehaviour
 {
      public static CameraFollow Instance;
-
-     private Transform target;
      
      [Header("Camera Follow Settings")]
-     [Tooltip("Smooth speed for camera movement. The higher the value, the faster the camera will follow.")]
-     [SerializeField] private float smoothSpeed = 0.125f;
+     [SerializeField, Tooltip("Smooth speed for camera movement. The higher the value, the faster the camera will follow.")]
+     private float smoothSpeed = 0.125f;
+     
+     private Transform target;
 
      private void Awake()
      {
