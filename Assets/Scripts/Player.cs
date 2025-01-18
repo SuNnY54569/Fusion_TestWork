@@ -106,13 +106,61 @@ public class Player : NetworkBehaviour
 
     public override void FixedUpdateNetwork()
     {
-        if (GetInput(out NetInput input))
-        {
-            HandleMovement(input);
-            HandleShooting(input);
-        }
+       if (GetInput(out NetInput input))
+       {
+            kcc.AddLookRotation(input.LookDelta * lookSensitivity);
+            UpdateCamTarget();
+            Vector3 worldDirection = kcc.TransformRotation * new Vector3(input.Direction.x, 0f, input.Direction.y);
+            float jump = 0f;
+
+            // Handle jump action
+            if (input.Buttons.WasPressed(PreviousButtons, InputButton.Jump) && kcc.IsGrounded)
+            {
+                jump = jumpImpulse;
+            }
+            
+            // Handle shooting action
+            if (input.Buttons.WasPressed(PreviousButtons, InputButton.Fire) && HasInputAuthority)
+            {
+                if (Runner.Tick - lastShotTick >= shootCooldown)
+                {
+                    RPC_Shoot(); // Call the Shoot RPC method to shoot a bullet
+                    lastShotTick = Runner.Tick;
+                }
+                else
+                {
+                    Debug.Log("Shooting is on cooldown!");
+                }
+            }
+            
+            kcc.Move(worldDirection.normalized * speed, jump);
+            PreviousButtons = input.Buttons;
+            baseLookRotation = kcc.GetLookRotation();
+       }
         
-        DetectNearbyObjects();
+        // Detect if any objects (such as coins or bullets) are within range
+        int objectInRange = Runner.GetPhysicsScene().OverlapCapsule(transform.position,
+            transform.position + Vector3.up * 2, 1f, collisionTestColliders, collisionTestMask, QueryTriggerInteraction.Collide);
+        for (int i = 0; i < objectInRange; i++)
+        {
+            var pickUpObject = collisionTestColliders[i].GetComponent<Coin>();
+            if (pickUpObject != null)
+            {
+                CollectObject(pickUpObject); // Collect the coin if it's within range
+                Debug.Log("Collect Object");
+            }
+
+            var bulletObject = collisionTestColliders[i].GetComponent<Bullet>();
+            if (bulletObject != null && Object.InputAuthority != bulletObject.shooter)
+            {
+                if (Object.HasStateAuthority)
+                {
+                    RPC_TakeDamage(bulletDamage); // Take damage if the bullet hits the player
+                }
+                bulletObject.DestroyBullet();
+            }
+        }
+
     }
     
     public override void Render()
@@ -134,24 +182,7 @@ public class Player : NetworkBehaviour
     
     #endregion
     
-    #region Movement and Camera
-    
-    private void HandleMovement(NetInput input)
-    {
-        kcc.AddLookRotation(input.LookDelta * lookSensitivity);
-        UpdateCamTarget();
-        Vector3 worldDirection = kcc.TransformRotation * new Vector3(input.Direction.x, 0f, input.Direction.y);
-        float jump = 0f;
-
-        if (input.Buttons.WasPressed(PreviousButtons, InputButton.Jump) && kcc.IsGrounded)
-        {
-            jump = jumpImpulse;
-        }
-
-        kcc.Move(worldDirection.normalized * speed, jump);
-        PreviousButtons = input.Buttons;
-        baseLookRotation = kcc.GetLookRotation();
-    }
+    #region Camera Update
     
     // Updates the camera target based on the player's look rotation
     private void UpdateCamTarget()
@@ -162,22 +193,6 @@ public class Player : NetworkBehaviour
     #endregion
     
     #region Shooting
-    
-    private void HandleShooting(NetInput input)
-    {
-        if (input.Buttons.WasPressed(PreviousButtons, InputButton.Fire) && HasInputAuthority)
-        {
-            if (Runner.Tick - lastShotTick >= shootCooldown)
-            {
-                RPC_Shoot();
-                lastShotTick = Runner.Tick;
-            }
-            else
-            {
-                Debug.Log("Shooting is on cooldown!");
-            }
-        }
-    }
     
     // Handles the shooting action by spawning a bullet, deducting score, and applying the bullet mechanics
     [Rpc(RpcSources.InputAuthority, RpcTargets.StateAuthority)]
@@ -217,31 +232,6 @@ public class Player : NetworkBehaviour
     #endregion
 
     #region Object Interaction
-    
-    // Detect if any objects (such as coins or bullets) are within range
-    private void DetectNearbyObjects()
-    {
-        int objectInRange = Runner.GetPhysicsScene().OverlapCapsule(transform.position,
-            transform.position + Vector3.up * 2, 1f, collisionTestColliders, collisionTestMask, QueryTriggerInteraction.Collide);
-        for (int i = 0; i < objectInRange; i++)
-        {
-            var pickUpObject = collisionTestColliders[i].GetComponent<Coin>();
-            if (pickUpObject != null)
-            {
-                CollectObject(pickUpObject);
-            }
-
-            var bulletObject = collisionTestColliders[i].GetComponent<Bullet>();
-            if (bulletObject != null && Object.InputAuthority != bulletObject.shooter)
-            {
-                if (Object.HasStateAuthority)
-                {
-                    RPC_TakeDamage(bulletDamage);
-                }
-                bulletObject.DestroyBullet();
-            }
-        }
-    }
     
     // Handles collecting a coin if the conditions are met
     private bool CollectObject(Coin pickUp)
