@@ -19,6 +19,8 @@ public class MenuManager : MonoBehaviour
     [SerializeField] private Button createRoomButton;
     [Tooltip("Button to join an existing room.")]
     [SerializeField] private Button joinRoomButton;
+    [Tooltip("Button to quit the game.")]
+    [SerializeField] private Button quitButton;
 
     [Header("Input Fields")]
     [Tooltip("Input field for setting a new room name.")]
@@ -44,6 +46,7 @@ public class MenuManager : MonoBehaviour
     {
         createRoomButton.onClick.AddListener(OnCreateRoomClicked);
         joinRoomButton.onClick.AddListener(OnJoinRoomClicked);
+        quitButton.onClick.AddListener(QuitGame);
 
         if (PlayerPrefs.HasKey("PlayerName"))
         {
@@ -99,6 +102,11 @@ public class MenuManager : MonoBehaviour
         
         statusText.text = "Joining Room...";
         StartGame(GameMode.Client, roomNameInput.text, _gameSceneName);
+    }
+
+    private void QuitGame()
+    {
+        Application.Quit();
     }
     
     #endregion
